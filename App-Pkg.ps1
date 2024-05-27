@@ -1,16 +1,15 @@
-
 param (
     [ValidateSet("AAS", "ACAS-ANALYSIS", "ACAS-ANALYSIS-DOMAIN", "B2ADMINISTRATION", "B2ADMINISTRATION-DOMAIN", "CHADD", "CHADD-DOMAIN", "CITIS", "CITIS-DOMAIN", "INFOSEC", "LMDS", "LMDS-DOMAIN", "OPSEC", "PURCHASETRACKER", "ROOMSCHEDULER","SPIRIT", "TEMS", "USACC")]
     [string]$AppName = "LMDS",
-    [string]$ReleaseDir = "\\elma-dev.tinker.af.mil\Elma-Release-Archive\$AppName",
-    [string]$DevDir = "\\wwyk-ws-2703v\DEV$\$AppName",
+    [string]$ReleaseDir = "\\Hidden-Path-1\$AppName",
+    [string]$DevDir = "\\Hidden-Path-2\DEV$\$AppName",
     [ValidateSet("minor", "patch")]
     [string]$VersionIncrementType = "minor"
 )
 
 $AppName = $AppName.ToUpper()
-$ReleaseDir1 = "\\elma-dev.tinker.af.mil\Elma-Release-Archive"
-$Report = "\\elma-dev.tinker.af.mil\Elma-Release-Archive\logs\Automation"
+$ReleaseDir1 = "\\Hidden-Path-3\Elma-Release-Archive"
+$Report = "\Hidden-Path-1\logs\Automation"
 $LogFilePath = "$ReleaseDir1\logs\$AppName\$(GET-DATE -F MM-dd-yy).txt"
 
 function Centralized-Log([string]$message) {
@@ -147,7 +146,7 @@ $(get-date -format MM/dd/yyyy) Release notes
 
     if ($AppName -like "*domain*" -or $AppName -like "*AAS*" -or $AppName -like "*INFOSEC*" -or $AppName -like "*USACC*" ) {
     Centralized-Log "Copying $Newdir.zip to 2licnet"
-    Copy-Item "$NewDir.Zip" -Destination "O:\IFC Branch\CyberOps\DevOps\ELMA\2-licnet\"
+    Copy-Item "$NewDir.Zip" -Destination "O:\Hidden-path-4\DTA\Folder\"
     }
 
     $endTime = Get-Date
