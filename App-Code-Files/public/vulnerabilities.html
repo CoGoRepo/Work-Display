@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/CSS/universal.css"/>
+    <link rel="stylesheet" href="/CSS/vuln.css"/>
+    <link href="/ag-grid-files/ag-grid.css" rel="stylesheet" />
+    <link href="/ag-grid-files/ag-theme-quartz.css" rel="stylesheet" />
+    <title>ATO-Matic Vulnerabilities</title>
+</head>
+<body>
+    <header class="header">
+        <img src="LOGO.webp" alt="ATO-MATIC Logo" class="logo" /> <!-- Add your logo here -->
+        <h1 class="site-title">ATO-MATIC</h1> <!-- Title centered at the top -->
+        <nav class="navigation">
+            <ul class="nav-list">
+                <li class="nav-item"><a href="dashboard.html">Dashboard</a></li>
+                <li class="nav-item"><a href="assets.html">Assets</a></li>
+                <li class="nav-item"><a href="vulnerabilities.html">Vulnerabilities</a></li>
+                <li class="nav-item"><a href="poams.html">POA&M Management</a></li>
+                <li class="nav-item"><a href="admin.html">Administration</a></li>
+                <li class="nav-item"><a href="#" role="button">Reports</a></li>
+            </ul>
+        </nav>
+        <div class="user-info">
+            <span class="current-user">Current user: Cody Gore</span>
+            <button class="logout-button" onclick="location.href='logout.php'">Logout</button>
+        </div>
+    </header>
+    
+    <main class="container">
+        <!-- Section for Vulnerability Management and buttons -->
+        <section class="management-header">
+            <h2>Vulnerability Management</h2>
+            <div class="management-buttons">
+                <!-- Left-aligned buttons -->
+                <div>
+                    <button id="exportViewButton">Export View</button>
+                    <label for="importViewInput" class="button">Import View</label>
+                </div>
+                <!-- Center-aligned dropdown and button -->
+                <div>
+                    <select id="viewSelect" class="dropdown-menu">
+                        <option value="">Select a view</option>
+                        <!-- Dynamically added options will go here -->
+                    </select>
+                    <button id="saveViewButton">Save View</button>
+                </div>
+                <!-- Right-aligned button -->
+                <button id="exportExcelButton">Export to Excel</button>
+                <!-- Hidden file input for Import View -->
+                <input type="file" id="importViewInput" style="display: none;" />
+            </div>
+        </section>
+    
+        <!-- Separate container for AG-Grid or other content -->
+        <div class="grid-container">
+            <div id="myGrid" class="ag-theme-quartz"></div>
+            <div id="detailsModal" class="modal">
+                <!-- Modal content -->
+                <div class="modal-content">
+                  <span class="close">&times;</span>
+                <div class="modal-body">
+                  <div class="modal-field"><strong>Host Name:</strong> <span id="modal-host-name"></span></div>
+                  <div class="modal-field"><strong>SSP:</strong> <span id="modal-ssp"></span></div>
+                  <div class="modal-field"><strong>STIG Name:</strong> <span id="modal-stig-name"></span></div>
+                  <div class="modal-field"><strong>Group ID:</strong> <span id="modal-group-id"></span></div>
+                  <div class="modal-field"><strong>Version:</strong> <span id="modal-version"></span></div>
+                  <div class="modal-field"><strong>Rule ID:</strong> <span id="modal-rule-id"></span></div>
+                  <div class="modal-field"><strong>Description:</strong> <span id="modal-description"></span></div>
+                  <div class="modal-field"><strong>Check Text:</strong> <span id="modal-check-text"></span></div>
+                  <div class="modal-field"><strong>Fix Text:</strong> <span id="modal-fix-text"></span></div>
+                  <div class="modal-field"><strong>Comments:</strong> <span id="modal-comments"></span></div>
+                </div>
+                  <div class="modal-footer">
+                    <button id="prevButton">Previous</button>
+                    <button id="nextButton">Next</button>
+                  </div>
+                </div>
+              </div>
+        </div>
+    </main>
+    <footer class="site-footer">
+        <small><a href="#">Privacy Policy</a> • <a href="#">Terms of Use</a></small>
+    </footer>
+    <!-- AG-Grid related script tags -->
+    <script src="/ag-grid-files/ag-grid-community.min.noStyle.js"></script>
+    <script src="/ag-grid-files/ag-grid-enterprise.min.noStyle.js"></script>
+    <!-- Link to your external JavaScript file -->
+    <script type="module" src="/JS_FILES/load-vuln-grid.js"></script>
+    <script src="/JS_FILES/Buttons.js"></script>
+</body>
+</html>

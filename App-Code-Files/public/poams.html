@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="alt.css">
+    <title>POA&M Management</title>
+</head>
+<body>
+<header>
+    <nav class="container-fluid">
+        <ul>
+            <li><strong>ACAS Data Management</strong></li>
+        </ul>
+        <ul>
+            <li><a href="dashboard.html">Dashboard</a></li>
+            <li><a href="Vulnerabilities.html">Vulnerabilities</a></li>
+            <li><a href="poams.html" role="button">POA&M Management</a></li>
+            <li><a href="#" role="button">Administration</a></li>
+            <li><a href="#" role="button">Reports</a></li>
+        </ul>
+    <div class="user-info">
+        <span class="current-user">Current user: Cody Gore</span>
+        <button class="logout-button" onclick="location.href='logout.php'">Logout</button>
+    </div>
+    </nav>
+</header>
+    <main class="container">
+        <div class="grid">
+            <section>
+                <hgroup>
+                    <h2>POA&M Management</h2>
+                    <h3>Overview</h3>
+                </hgroup>
+                <p>Manage and track your Plans of Actions and Milestones.</p>
+                <button onclick="location.href='#'">Create New POA&M</button>
+                <h3>Current POA&Ms</h3>
+                <!-- Table or list of POA&Ms -->
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Title</th>
+                            <th>Status</th>
+                            <th>Assigned To</th>
+                            <th>Due Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Populate with data -->
+                        <!-- Example Row -->
+                        <tr>
+                            <td>001</td>
+                            <td>Update Software</td>
+                            <td>In Progress</td>
+                            <td>John Doe</td>
+                            <td>2024-01-31</td>
+                            <td>
+                                <button>Edit</button>
+                                <button>Delete</button>
+                            </td>
+                        </tr>
+                        <!-- More rows here -->
+                    </tbody>
+                </table>
+                <!-- End of table -->
+            </section>
+        </div>
+    </main>
+    <footer class="container">
+        <small><a href="#">Privacy Policy</a> • <a href="#">Terms of Use</a></small>
+    </footer>
+    <script>
+        // Basic JS for page interaction (if needed)
+    </script>
+</body>
+</html>

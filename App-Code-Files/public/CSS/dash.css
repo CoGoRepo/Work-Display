@@ -1,0 +1,175 @@
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+  }
+  .container {
+    display: flex;
+    height: calc(100vh - 95px);
+    margin-top: 10px;
+    margin-bottom: 10px;
+  }
+  .stats-container {
+    width: 450px;
+    padding: 10px;
+  }
+  .stats-title {
+    height: 30px;
+    margin-bottom: 20px;
+    padding: 5px;
+    color: #ebebeb;
+    font-weight: bold; /* Make text bolder */
+    text-align: center; /* Center the text */
+    font-size: 24px; /* Optional: Increase font size to match <h2> appearance */
+  }
+  .stats-content {
+    height: calc(100% - 40px); /* 30px title + 10px margin */
+    overflow: auto;
+    color: #ebebeb;
+    display: flex; /* Establish this container as a flex container */
+    flex-direction: column; /* Stack children vertically */
+    justify-content: center; /* Center children vertically */
+    align-items: center; /* Center children horizontally, if needed */
+  }
+
+  .stats-content h3 {
+    margin-top: 5.5%; /* Move the entire h3 down 50px */
+    text-align: left; /* Align the text to the left */
+    width: 100%; /* Ensure it spans the full width of its container */
+    margin-bottom: 20px;
+}
+  
+#ssp-dropdown {
+  width: 100%; /* Make the dropdown wider, adjust accordingly */
+  max-width: 150px; /* Or any other suitable width */
+  /* Additional styling for the dropdown */
+  margin-left: auto; /* For centering if needed, depending on your layout */
+  margin-right: auto; /* For centering if needed, depending on your layout */
+  height: 21px;
+}
+
+  .cards-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 5.5%;
+    justify-content: top; /* Center cards vertically */
+    width: 100%;
+    height: 95%
+}
+
+  .card {
+    display: flex; /* Use Flexbox */
+    flex-direction: column; /* Stack children vertically */
+    justify-content: center; /* Center content vertically */
+    align-items: center; /* Center content horizontally */
+    height: 15%;
+    margin-bottom: 20px;
+    padding: 5px;
+    width: 300px;
+   /* border-radius: 50px; */
+   border-bottom-left-radius: 10px; /* Adjust as needed for desired roundness */
+   border-top-left-radius: 10px; /* Adjust as needed for desired roundness */
+   border-bottom-right-radius: 150px; /* Adjust as needed for desired roundness */
+   border-top-right-radius: 150px; /* Adjust as needed for desired roundness */   
+}
+
+.card:nth-of-type(1) { 
+    background-color: #DC143C; /* Red for Open Vulnerabilities */
+}
+.card:nth-of-type(1):hover { 
+transform: scale(1.05); /* Scales up the element by 5% */
+    cursor: pointer; /* Changes the cursor to indicate it's clickable */
+}
+
+.card:nth-of-type(2) { 
+    background-color: #4169E1; /* Blue for Assigned Findings */
+}
+
+.card:nth-of-type(2):hover { 
+  transform: scale(1.05); /* Scales up the element by 5% */
+      cursor: pointer; /* Changes the cursor to indicate it's clickable */
+  }
+
+.card:nth-of-type(3) { 
+    background-color: #046307; /* Green for Resolved This Month */
+}
+
+.card:nth-of-type(3):hover { 
+  transform: scale(1.05); /* Scales up the element by 5% */
+      cursor: pointer; /* Changes the cursor to indicate it's clickable */
+  }
+
+.card:nth-of-type(4) { 
+    background-color: #F28500; /* Yellowish-orange for "My POAMs" */
+}
+
+.card:nth-of-type(4):hover { 
+  transform: scale(1.05); /* Scales up the element by 5% */
+      cursor: pointer; /* Changes the cursor to indicate it's clickable */
+  }
+
+  .card:nth-of-type(5) { 
+    background-color: #8E4585; /* Deep Purple for "Total Assets" */
+}
+
+.card:nth-of-type(5):hover { 
+  transform: scale(1.05); /* Scales up the element by 5% */
+      cursor: pointer; /* Changes the cursor to indicate it's clickable */
+  }
+
+.card h3 {
+  color: #FFFFFF; /* White text for better readability on colored backgrounds */
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7); /* Black text shadow to enhance visibility */
+  font-size: 20px; /* Increased font size for better visibility */
+  margin: 0px 0; /* Adjusted for vertical spacing, adjust as needed */
+  justify-content: center; /* Center horizontally */
+  align-items: center; /* Center vertically */
+  display: flex;
+}
+.card p {
+  color: #FFFFFF; /* White text for better readability on colored backgrounds */
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7); /* Black text shadow to enhance visibility */
+  font-size: 22px; /* Increased font size for better visibility */
+  margin: 0px 0; /* Adjusted for vertical spacing, adjust as needed */
+  justify-content: center; /* Center horizontally */
+  align-items: center; /* Center vertically */
+  display: flex;
+}
+
+  .metrics-container {
+    flex-grow: 1;
+    padding: 10px;
+    padding-bottom: 50px;
+  }
+  .metrics-title {
+    height: 30px;
+    margin-bottom: 20px;
+    padding: 5px;
+    color: #ebebeb;
+    font-weight: bold; /* Make text bolder */
+    text-align: center; /* Center the text */
+    font-size: 24px; /* Optional: Increase font size to match <h2> appearance */
+  }
+  .metrics-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-gap: 10px;
+    height: calc(100% - 40px); /* 30px title + 10px margin */
+  }
+  .graph {
+    padding: 0px;
+    height: 100%; /* Ensure this respects the grid layout */
+    width: 100%; /* Adjust if necessary to ensure width is contained */
+    overflow: hidden; /* Hide overflow, but consider impact on content */
+    border-radius: 25px;
+  }
+
+  .graph img {
+    width: 100%;
+    height: 100%;
+     /* Stretches the image to fit the container, ignoring aspect ratio */
+    border-radius: 25px;
+}

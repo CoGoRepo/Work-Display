@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/CSS/universal.css">
+    <link rel="stylesheet" href="/CSS/dash.css">
+    <title>ATO-Matic Dashboard</title>
+</head>
+<body>
+  <header class="header">
+    <img src="LOGO.webp" alt="ATO-MATIC Logo" class="logo" /> <!-- Add your logo here -->
+    <h1 class="site-title">ATO-MATIC</h1> <!-- Title centered at the top -->
+    <nav class="navigation">
+        <ul class="nav-list">
+          <li class="nav-item"><a href="dashboard.html">Dashboard</a></li>
+          <li class="nav-item"><a href="assets.html">Assets</a></li>
+          <li class="nav-item"><a href="vulnerabilities.html">Vulnerabilities</a></li>
+          <li class="nav-item"><a href="poams.html">POA&M Management</a></li>
+          <li class="nav-item"><a href="admin.html">Administration</a></li>
+          <li class="nav-item"><a href="#" role="button">Reports</a></li>
+        </ul>
+    </nav>
+    <div class="user-info">
+        <span class="current-user">Current user: Cody Gore</span>
+        <button class="logout-button" onclick="location.href='logout.php'">Logout</button>
+    </div>
+</header>
+<div class="container">
+  <div class="stats-container">
+    <div class="stats-title">Quick Look</div>
+    <div class="stats-content">
+      <h3>SSP:
+        <select name="ssp-dropdown" id="ssp-dropdown">
+          <option value="ALL" selected>ALL</option>
+          <option value="NIPR">NIPR</option>
+          <option value="SIPR">SIPR</option>
+          <option value="HORNET">HORNET</option>
+          <option value="COD">COD</option>
+        </select>        
+      </h3>
+      <div class="cards-wrapper"> <!-- Wrapper for cards -->
+        <div class="card">
+          <h3>Open Vulnerabilities</h3>
+          <p>1123</p>
+        </div>
+        <div class="card">
+          <h3>Assigned Findings</h3>
+          <p>327</p>
+        </div>
+        <div class="card">
+          <h3>Resolved This Month</h3>
+          <p>145</p>
+        </div>
+        <div class="card">
+          <h3>My POAMs</h3>
+          <p>6</p>
+        </div>
+        <div class="card">
+          <h3>Total Assets</h3>
+          <p>23</p>
+        </div>
+      </div> <!-- End of cards wrapper -->
+    </div>
+  </div>
+  <div class="metrics-container">
+    <div class="metrics-title">Metrics</div>
+    <div class="metrics-content">
+      <div class="graph" id="graph1"></div>
+      <div class="graph" id="graph2"></div>
+      <div class="graph" id="graph3"></div>
+      <div class="graph" id="graph4"><img src="/Graphs/cvss-score.png" alt="Graph 1 Description"></div>
+    </div>
+  </div>
+</div>
+<footer class="site-footer">
+  <small><a href="#">Privacy Policy</a> • <a href="#">Terms of Use</a></small>
+</footer>
+<script src="/ag-grid-files/ag-charts-community.min.js"></script>
+
+<script src="/JS_FILES/cards.js"></script>
+<script src="/JS_FILES/dash-chart1.js"></script>
+</body>
+</html>

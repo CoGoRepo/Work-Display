@@ -1,0 +1,63 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+}
+
+.admin-main {
+  padding: 20px;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.admin-section {
+  background-color: #f4f4f4;
+  padding: 15px; /* Reduced padding inside the section */
+  margin-bottom: 20px;
+  border-radius: 5px;
+  width: 50%;
+}
+
+.admin-section h2 {
+  margin-top: 5px; /* Reduced top and bottom margin for h2 */
+  margin-bottom: 5px;
+}
+
+.admin-form {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch; /* This ensures that the flex children stretch to fill the parent height */
+}
+
+.form-column,
+.form-column-wide {
+  display: flex;
+  flex-direction: column;
+  flex: 1; /* This will make both columns grow equally */
+  padding-right: 10px; /* Right padding for spacing between columns */
+}
+
+.admin-form input[type="text"],
+.admin-form textarea {
+  flex: 1; /* This will make the textarea grow to fill its container */
+  resize: none; /* Optional: Prevent manual resizing of textarea */
+  padding: 8px; /* Maintain internal padding */
+  margin-bottom: 10px; /* Consistent margin with other inputs */
+  border: 1px solid #ccc; /* Optional: for consistent styling with inputs */
+}
+
+.admin-form textarea {
+  height: 55px; /* Adjusted height for the textarea */
+}
+
+button[type="submit"] {
+  padding: 8px 16px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  cursor: pointer;
+  align-self: flex-start; /* Align button to the start of the column */
+}

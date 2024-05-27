@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/CSS/universal.css">
+    <link rel="stylesheet" href="/CSS/admin.css">
+    <title>ATO-Matic Admin</title>
+</head>
+<body>
+  <header class="header">
+    <img src="LOGO.webp" alt="ATO-MATIC Logo" class="logo" /> <!-- Add your logo here -->
+    <h1 class="site-title">ATO-MATIC</h1> <!-- Title centered at the top -->
+    <nav class="navigation">
+        <ul class="nav-list">
+          <li class="nav-item"><a href="dashboard.html">Dashboard</a></li>
+          <li class="nav-item"><a href="assets.html">Assets</a></li>
+          <li class="nav-item"><a href="vulnerabilities.html">Vulnerabilities</a></li>
+          <li class="nav-item"><a href="poams.html">POA&M Management</a></li>
+          <li class="nav-item"><a href="admin.html">Administration</a></li>
+          <li class="nav-item"><a href="#" role="button">Reports</a></li>
+        </ul>
+    </nav>
+    <div class="user-info">
+        <span class="current-user">Current user: Cody Gore</span>
+        <button class="logout-button" onclick="location.href='logout.php'">Logout</button>
+    </div>
+</header>
+<main class="admin-main">
+  <!-- Section to Add New Asset -->
+  <section class="admin-section">
+    <h2>Add New Asset</h2>
+    <form id="add-asset-form" class="admin-form">
+      <div class="form-column">
+        <input type="text" id="asset-name" name="asset-name" placeholder="Asset Name" required>
+        <input type="text" id="asset-ip" name="asset-ip" placeholder="Asset IP" required>
+        <input type="text" id="asset-ssp" name="asset-ssp" placeholder="SSP" required>
+        <input type="text" id="asset-role" name="asset-role" placeholder="Role" required>
+      </div>
+      <div class="form-column form-column-wide">
+        <textarea id="asset-additionalinfo" name="asset-additionalinfo" placeholder="Additional Info" required></textarea>
+      </div>
+      <button type="submit">Add Asset</button>
+    </form>
+  </section>
+
+  <!-- Section to Update Asset -->
+  <section class="admin-section">
+    <h2>Update Asset</h2>
+    <form id="update-asset-form" class="admin-form">
+      <div class="form-column">
+        <input type="text" id="update-asset-name" name="update-asset-name" placeholder="Asset Name">
+        <input type="text" id="update-asset-ip" name="update-asset-ip" placeholder="Asset IP">
+        <input type="text" id="update-asset-ssp" name="update-asset-ssp" placeholder="SSP">
+        <input type="text" id="update-asset-role" name="update-asset-role" placeholder="Role">
+      </div>
+      <div class="form-column form-column-wide">
+        <textarea id="update-asset-additionalinfo" name="update-asset-additionalinfo" placeholder="Additional Info"></textarea>
+      </div>
+      <button type="submit">Update Asset</button>
+    </form>
+  </section>
+  
+  <!-- Section to Remove Asset -->
+  <section class="admin-section">
+    <h2>Remove Asset</h2>
+    <form id="remove-asset-form" class="admin-form">
+      <div class="form-column">
+        <input type="text" id="remove-asset-name" name="remove-asset-name" placeholder="Asset Name" required>
+        <input type="text" id="remove-asset-ip" name="remove-asset-ip" placeholder="Asset IP" required>
+        <input type="text" id="remove-asset-id" name="remove-asset-id" placeholder="Asset ID" required>
+      </div>
+      <!-- Assuming there is no additional info in the remove section, no form-column-wide div is added -->
+      <button type="submit">Remove Asset</button>
+    </form>
+  </section>
+</main>
+
+
+<footer class="site-footer">
+  <small><a href="#">Privacy Policy</a> • <a href="#">Terms of Use</a></small>
+</footer>
+</body>
+</html>

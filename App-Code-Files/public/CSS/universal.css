@@ -1,0 +1,111 @@
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+/* General Styles */
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #333; /* Light background */
+    color: #333; /* Muted text color */
+    line-height: 1.6; /* Improve readability */
+}
+
+.header {
+    position: relative; /* Add this line */
+    background: linear-gradient(to right, #007BFF 0%, #004BA8 50%, #007BFF 100%);
+    padding: 10px 0;
+    text-align: center;
+    height: 70px;
+    border-top-left-radius: 10px; /* Adjust as needed for desired roundness */
+    border-top-right-radius: 10px; /* Adjust as needed for desired roundness */
+}
+
+.logo {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 87px; /* Example height, adjust as needed */
+    width: 125px; /* Maintain aspect ratio */
+    border-bottom-left-radius: 10px; /* Adjust as needed for desired roundness */
+    border-top-left-radius: 10px; /* Adjust as needed for desired roundness */
+}
+.site-title {
+    color: black;
+    margin: 0;
+}
+
+.navigation {
+    background: linear-gradient(to right, #007BFF 0%, #004BA8 50%, #007BFF 100%);
+    border-radius: 10px; /* Adjust as needed for desired roundness */
+}
+
+.nav-list {
+    list-style: none;
+    padding: 0;
+    margin: 0px 0 0; /* Adjust spacing as needed */
+    display: inline-block; /* Center the list in the nav */
+}
+
+.nav-item {
+    display: inline-block; /* Display list items side by side */
+    margin-right: 20px; /* Space between items */
+}
+
+.nav-item:last-child {
+    margin-right: 0; /* No space after the last item */
+}
+
+.nav-item a {
+    color: white;
+    text-decoration: none;
+    transition: background-color 0.3s, color 0.3s; /* Smooth transition for hover effects */
+}
+
+.nav-item a:hover {
+     color: #FFD700; /* Slightly darker on hover */
+}
+
+.user-info {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: white; /* Change as needed */
+}
+
+.current-user {
+    margin-right: 10px;
+}
+
+.logout-button {
+    background-color: #f44336; /* Red button */
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    cursor: pointer;
+    transition: opacity 0.3s; /* Smooth transition for hover effect */
+}
+
+.logout-button:hover {
+    opacity: 0.8;
+    border-radius: 50px;
+}
+
+.site-footer  {
+    text-align: center;
+    height: 35px;
+    display: flex;
+    position: fixed; /* Fixed position */
+    left: 0;
+    bottom: 0;
+    justify-content: center;
+    width: 100%;
+    background-color: #007bff; /* Footer background color */
+    border-top: 1px solid #eee;
+    z-index: 1000; /* Ensure it's above other content */
+    border-radius: 10px; /* Adjust as needed for desired roundness */
+}
+
+.site-footer a {
+    color: #fff; /* White text for footer links */
+}

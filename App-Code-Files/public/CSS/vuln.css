@@ -1,0 +1,191 @@
+* {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+  }
+
+/* Style for the Vulnerability Management section and title */
+.management-header {
+    display: flex;
+    flex-direction: column;
+
+    text-align: center;
+}
+
+/* Style for h2 inside the management-header */
+.management-header h2 {
+    margin: 0; /* Remove default margin */
+    display: inline-block; /* Inline-block for aligning with buttons if needed */
+    color: #ebebeb;
+    text-align: center; /* Center the header text */
+}
+
+/* Placeholder for future buttons */
+:root {
+    /* Define base width for buttons */
+    --button-base-width: 150px; /* This is an example, adjust as needed */
+}
+
+.left-group,
+.right-group {
+    flex: 1; /* Both left and right groups take up equal space */
+}
+
+.center-group {
+    flex-grow: 1; /* Allow the central group to grow */
+    display: flex;
+    justify-content: center; /* Center the central group content */
+    flex-basis: 100%; /* Give the central group full width on wrap */
+}
+
+.management-buttons {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%; /* Ensure the buttons container takes full width */
+    flex-wrap: wrap; /* Allow wrapping for smaller screens */
+}
+
+.management-buttons #exportExcelButton {
+    padding: 6px 12px;
+    font-size: 14px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    text-align: center;
+    display: inline-block;
+    height: 34px;
+    cursor: pointer;
+}
+/* Styles for buttons and the label styled as a button */
+.management-buttons button,
+.management-buttons .button {
+    padding: 6px 12px;
+    font-size: 14px;
+    margin: 2px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    text-align: center;
+    display: inline-block;
+    height: 34px;
+    cursor: pointer;
+}
+
+/* Styles for the dropdown menu, making it 50% wider than buttons */
+.management-buttons .dropdown-menu {
+    padding: 6px 8px;
+    margin-right: 5px;
+    background-color: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    height: 34px;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    width: calc(var(--button-base-width) * 1.5); /* 50% wider */
+}
+
+/* Style for the label used as 'Import View' button */
+.management-buttons label.button {
+    background-color: #28a745;
+    line-height: 22px; /* Center the text vertically */
+    border-radius: 10px;
+}
+
+/* Hidden styles for file input */
+.management-buttons input[type="file"],
+.management-buttons #importViewInput {
+    display: none;
+}
+
+/* Adjustments for file import label/button */
+.management-buttons .button.import { /* Added 'import' class for specificity */
+    padding: 8px 16px;
+    background-color: #28a745; /* Different color for import button */
+    margin-left: 5px;
+}
+
+
+/* Ensure the main container takes up the full height between header and footer */
+main.container {
+    display: flex; /* Add this if not already present */
+    flex-direction: column; /* Stack children vertically */
+    margin-top: 15px; /* Adjust this to the height of your header */
+    margin-bottom: 15px; /* Footer height (30px) + desired gap (15px) */
+    height: calc(100vh - 135px); /* Header height + footer height with gap */
+    overflow: hidden; /* Prevents scrolling of the page */
+}
+
+/* Container for AG-Grid, separate from the management-header */
+.grid-container {
+    flex-grow: 1; /* Allow this container to grow and fill the remaining space */
+    width: 100%; /* Full width */
+    position: relative;
+}
+
+/* Style for the grid */
+#myGrid {
+    height: 100%; /* The grid will fill the available space in the main container */
+    width: 100%;
+    box-sizing: border-box; /* Include padding in the height calculation */
+    border: 2px solid #36454F; /* Example: 2px solid blue border */
+    border-radius: 5px; /* Optional: adds rounded corners to your grid */
+}
+
+/* Style to center cells */
+.ag-header-cell-center .ag-header-cell-label {
+    justify-content: center;
+}
+
+.modal {
+    display: none; /* Hidden by default */
+    position: absolute; /* Stay in place */
+    z-index: 2; /* Sit on top */
+    left: 15%; /* Center the modal on the screen horizontally */
+    top: 0; /* Align the top edge of the modal with the top of the screen */
+    width: 70%; /* Set the width of the modal */
+    height: 100%; /* Set the height of the modal */
+    background-color: rgba(0, 0, 0, 0.9); /* Semi-transparent background */
+    border: 2px solid #36454F; /* Example: 2px solid blue border */
+    border-radius: 15px; /* Optional: adds rounded corners to your grid */
+  }
+  
+  .modal-content {
+    background-color: grey;
+    height: 99%;
+    margin: 5px; /* Margin at the top and bottom of modal content */
+    padding: 5px; /* Padding inside the modal content */
+    overflow-y: auto;
+    border: 2px solid #36454F; /* Example: 2px solid blue border */
+    border-radius: 10px; /* Optional: adds rounded corners to your grid */
+  }
+  
+  .close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+  }
+  
+  .close:hover,
+  .close:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  
+  .modal-footer {
+    display: flex;
+    justify-content: bottom;
+    padding-top: 20px; /* Space above the footer */
+  }
+  
+  .modal-field {
+    margin-bottom: 10px; /* Space between fields */
+  }
+  
