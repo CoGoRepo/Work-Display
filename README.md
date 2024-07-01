@@ -25,7 +25,7 @@ The Get-VmInfo function retrieves VM Name, RAM, Cores, HD sizes for one, afew, o
 Contains 3 scripts for Extracting all STIG checklists from an archive, Parsing the XML files for required data, and importing it to the database for ATO-Matic.
 There are two scripts that Cover ~140 Registry and auditpol checks. Each with their associated CSV data in the CSV folder.
 
-#App-Pkg.ps1
+# App-Pkg.ps1
 This is a script I made for our DevOps Team. Once we publish App code to the respective folders, this script will package it up, increment the versions, and send it where it needs to go.
 I have other scripts for pulling required information from Azure Boards, deploying the code that I can't share.
 
