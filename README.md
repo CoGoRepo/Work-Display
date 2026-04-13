@@ -1,32 +1,117 @@
 # Work-Display
-Just displaying a few things I've made. Feel free to look around, try some things out, and make a request if you have something you want made.
-# App-Code-Files
-Contains the majority of the code/files for a web app called ATO-Matic. It's used for Tracking compute assets and their vulnerabilities.
 
-It has a clean and Intuitive UI and provides some metrics. Covers 21,000+ STIG Rule definitions across 419 unique products.
-Designed to be used with PostgreSQL. I may upload the database template at some point.
+A collection of scripts, tools, and projects I’ve built while working in IT (system administration, DevOps, and automation).
 
-# Functions and modules/Custom-Active-Directory
-Contains some really useful functions for AD Operations. I'll expand it as I come across scenarios I want to make easier or a request is made.
+Feel free to explore, use anything you find helpful, and reach out if you want something built or improved.
 
-The Copy-AdGroups function copies or adds Active Directory group memberships from one user to another.
+---
 
-Use the -Clone switch to copy memberships exactly, removing any groups from the target user that the source user is not a part of.
+## 📂 Repository Structure
 
-Use the -Add switch to add the target user to the groups the source user is part of, while keeping any pre-existing groups.
+### 🔹 App-Code-Files (ATO-Matic)
+Contains the majority of the code for **ATO-Matic**, a web app designed for tracking compute assets and their vulnerabilities.
 
-The -Type parameter allows you to specify which types of groups to copy: DistributionOnly, SecurityOnly, or Both (default).
+**Key features:**
+- Clean, intuitive UI
+- Tracks assets and vulnerability data
+- Covers **21,000+ STIG rule definitions** across **419+ products**
+- Designed to use a **PostgreSQL backend**
 
-# Functions and modules/Custom-Hyper-V
-Has some functions for getting VM info. Will add more upon request or as I come across scenarios I want to make easier.
+> ⚠️ Database template may be added later
 
-The Get-VmInfo function retrieves VM Name, RAM, Cores, HD sizes for one, afew, or all VM's.
-# Functions and modules/STIGS
-Contains 3 scripts for Extracting all STIG checklists from an archive, Parsing the XML files for required data, and importing it to the database for ATO-Matic.
-There are two scripts that Cover ~140 Registry and auditpol checks. Each with their associated CSV data in the CSV folder.
+---
 
-# App-Pkg.ps1
-This is a script I made for our DevOps Team. Once we publish App code to the respective folders, this script will package it up, increment the versions, and send it where it needs to go.
-I have other scripts for pulling required information from Azure Boards, deploying the code that I can't share.
+### 🔹 Functions and Modules
 
+#### 🧠 Custom-Active-Directory
+PowerShell functions for simplifying AD operations.
 
+**Copy-AdGroups**
+- Copies or adds group memberships from one user to another
+
+Options:
+- `-Clone` → Exact copy (removes unmatched groups from target)
+- `-Add` → Adds groups without removing existing ones
+- `-Type` → `DistributionOnly`, `SecurityOnly`, or `Both` (default)
+
+---
+
+#### 🖥️ Custom-Hyper-V
+PowerShell utilities for Hyper-V environments.
+
+**Get-VmInfo**
+- Retrieves:
+  - VM Name
+  - RAM
+  - CPU cores
+  - Disk sizes
+- Works on one, multiple, or all VMs
+
+---
+
+#### 🔐 STIGS
+Scripts for processing STIG checklist data for ATO-Matic.
+
+Includes:
+- Extraction of STIG checklists from archives
+- XML parsing for required data
+- Import into PostgreSQL database
+
+Also includes:
+- ~140 registry checks
+- ~140 auditpol checks
+- Associated CSV datasets
+
+---
+
+### 🔹 App-Pkg.ps1
+Internal packaging script used in an on-prem Dev environment.
+
+**Functionality:**
+- Packages application code
+- Increments versioning
+- Distributes builds to target locations
+
+> ⚠️ Some related deployment scripts (Azure Boards, pipelines, etc.) are not included
+
+---
+
+### 🔹 Az-Scripts
+Azure-focused scripts and automation.
+
+Includes:
+- Entra ID / Graph API automation
+- Deployment and identity utilities
+- Scripts built around real-world admin scenarios
+
+**Example:**
+- External MFA (EAM) bulk assignment script using Microsoft Graph  
+  → Designed to preload authentication methods for users during migration
+
+---
+
+## 🧠 Purpose of This Repo
+
+This repo is meant to:
+- Showcase real-world IT tooling and automation
+- Share reusable scripts
+- Provide practical solutions to common admin problems
+
+---
+
+## 🚀 Notes
+
+- Scripts are built from real scenarios, not theory
+- Expect practical over polished
+- Some scripts may require adaptation depending on your environment
+
+---
+
+## 📬 Requests / Ideas
+
+If you have:
+- a repetitive task
+- something that should be automated
+- or a problem you think could be scripted
+
+Feel free to reach out or open an issue.
