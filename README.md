@@ -99,14 +99,6 @@ This repo is meant to:
 
 ---
 
-## 🚀 Notes
-
-- Scripts are built from real scenarios, not theory
-- Expect practical over polished
-- Some scripts may require adaptation depending on your environment
-
----
-
 ## 📬 Requests / Ideas
 
 If you have:
