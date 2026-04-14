@@ -1,79 +1,93 @@
 <#
 .SYNOPSIS
-Preloads (assigns) an External Authentication Method (EAM) to one or more users in Microsoft Entra ID.
+    Preloads (assigns) an External Authentication Method (EAM) to one or more users in Microsoft Entra ID.
 
 .DESCRIPTION
-This script uses Microsoft Graph v1.0 to assign an External Authentication Method (EAM) to users.
-It is intended for migration scenarios where administrators want to pre-stage MFA methods
-instead of requiring users to self-register.
+    This script uses Microsoft Graph v1.0 to assign an External Authentication Method (EAM) to users.
+    It is intended for migration scenarios where administrators want to pre-stage MFA methods
+    instead of requiring users to self-register.
 
-For each user, the script:
-- Resolves the user by UserPrincipalName
-- Checks if the external authentication method already exists
-- Assigns the method if missing
+    For each user, the script:
+    - Resolves the user by UserPrincipalName
+    - Checks if the external authentication method already exists
+    - Assigns the method if missing
 
-Supports -WhatIf for safe dry-run execution.
+    Supports -WhatIf for safe dry-run execution.
 
 .PARAMETER UserPrincipalNames
-One or more User Principal Names (UPNs) to assign the External MFA method to.
+    One or more User Principal Names (UPNs) to assign the External MFA method to.
 
 .PARAMETER ConfigurationId
-The GUID of the External MFA configuration in Entra ID.
+    The GUID of the External MFA configuration in Entra ID.
+    Tip: Run 'Get-MgPolicyAuthenticationMethodPolicyExternalMethodConfiguration | Select-Object Id, DisplayName' to find this.
 
 .PARAMETER DisplayName
-A friendly name for the External MFA method (e.g., "Duo MFA").
+    A friendly name for the External MFA method (e.g., "Duo MFA").
 
 .PARAMETER ConnectGraph
-If specified, the script will prompt to connect to Microsoft Graph.
+    If specified, the script will prompt to connect to Microsoft Graph.
 
 .PARAMETER OutputCsvPath
-Optional path to export results as a CSV file.
+    Optional path to export results as a CSV file.
 
 .EXAMPLE
-Connect-MgGraph -Scopes "UserAuthMethod-External.ReadWrite"
+    $Params = @{
+        UserPrincipalNames = "alice@contoso.com"
+        ConfigurationId    = "11111111-2222-3333-4444-555555555555"
+        DisplayName        = "Duo MFA"
+        WhatIf             = $true
+    }
+    .\Az-Preload-External-MFA.ps1 @Params
 
-.\Az-Preload-External-MFA.ps1 `
-  -UserPrincipalNames "alice@contoso.com" `
-  -ConfigurationId "11111111-2222-3333-4444-555555555555" `
-  -DisplayName "Duo MFA" `
-  -WhatIf
-
-Performs a dry run to show what actions would be taken without making changes.
-
-.EXAMPLE
-.\Az-Preload-External-MFA.ps1 `
-  -UserPrincipalNames @("alice@contoso.com","bob@contoso.com") `
-  -ConfigurationId "11111111-2222-3333-4444-555555555555" `
-  -DisplayName "Duo MFA"
-
-Assigns the External MFA method to multiple users.
+    Performs a dry run using splatting to show actions without making changes.
 
 .EXAMPLE
-$users = Import-Csv .\users.csv | Select-Object -ExpandProperty UserPrincipalName
+    $Params = @{
+        UserPrincipalNames = "alice@contoso.com", "bob@contoso.com"
+        ConfigurationId    = "11111111-2222-3333-4444-555555555555"
+        DisplayName        = "Duo MFA"
+        ConnectGraph       = $true
+    }
+    .\Az-Preload-External-MFA.ps1 @Params
 
-.\Az-Preload-External-MFA.ps1 `
-  -UserPrincipalNames $users `
-  -ConfigurationId "11111111-2222-3333-4444-555555555555" `
-  -DisplayName "Duo MFA"
+    Connects to Graph and assigns the External MFA method to multiple users.
 
-Assigns the External MFA method using a CSV input.
+.EXAMPLE
+    $UserList = Import-Csv .\users.csv | Select-Object -ExpandProperty UserPrincipalName
+    $Params = @{
+        UserPrincipalNames = $UserList
+        ConfigurationId    = "11111111-2222-3333-4444-555555555555"
+        DisplayName        = "Duo MFA"
+    }
+    .\Az-Preload-External-MFA.ps1 @Params
+
+    Assigns the External MFA method using a CSV input.
+
+.EXAMPLE
+    $Params = @{
+        UserPrincipalNames = "alice@contoso.com"
+        ConfigurationId    = "11111111-2222-3333-4444-555555555555"
+        DisplayName        = "Duo MFA"
+        OutputCsvPath      = "C:\util\Logs\MFA_results.csv"
+    }
+    .\Az-Preload-External-MFA.ps1 @Params
+
+    Registers a user and saves the success/failure status to a CSV file for auditing.
 
 .NOTES
-Requirements:
-- External MFA must already be configured in Entra ID
-- Requires Microsoft Graph permission:
-  UserAuthMethod-External.ReadWrite (delegated)
-- Requires appropriate admin role (e.g., Authentication Administrator)
+    Requirements:
+    - External MFA must already be configured in Entra ID
+    - Requires Microsoft Graph permission: UserAuthMethod-External.ReadWrite (delegated)
+    - Requires appropriate admin role (e.g., Authentication Administrator)
 
-Official docs:
-- Manage external MFA in Entra:
-  https://learn.microsoft.com/en-us/entra/identity/authentication/how-to-authentication-external-method-manage
-- Create externalAuthenticationMethod:
-  https://learn.microsoft.com/en-us/graph/api/authentication-post-externalauthenticationmethods?view=graph-rest-1.0
-- List externalAuthenticationMethod:
-  https://learn.microsoft.com/en-us/graph/api/authentication-list-externalauthenticationmethods?view=graph-rest-1.0
+    Official docs:
+    - Manage external MFA in Entra:
+      https://learn.microsoft.com/en-us/entra/identity/authentication/how-to-authentication-external-method-manage
+    - Create externalAuthenticationMethod:
+      https://learn.microsoft.com/en-us/graph/api/authentication-post-externalauthenticationmethods?view=graph-rest-1.0
+    - List externalAuthenticationMethod:
+      https://learn.microsoft.com/en-us/graph/api/authentication-list-externalauthenticationmethods?view=graph-rest-1.0
 #>
-
 [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
 param(
     [Parameter(Mandatory = $true)]
