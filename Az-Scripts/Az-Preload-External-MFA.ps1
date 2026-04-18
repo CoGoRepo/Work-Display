@@ -77,7 +77,7 @@
 .NOTES
     Requirements:
     - External MFA must already be configured in Entra ID
-    - Requires Microsoft Graph permission: UserAuthMethod-External.ReadWrite (delegated)
+    - Requires Microsoft Graph permission: UserAuthenticationMethod.ReadWrite.All (delegated)
     - Requires appropriate admin role (e.g., Authentication Administrator)
 
     Official docs:
@@ -114,7 +114,7 @@ $ErrorActionPreference = 'Stop'
 function Ensure-MgConnection {
     if ($ConnectGraph) {
         Write-Host "Connecting to Microsoft Graph..." -ForegroundColor Cyan
-        Connect-MgGraph -Scopes "UserAuthMethod-External.ReadWrite" -NoWelcome
+        Connect-MgGraph -Scopes "UserAuthenticationMethod.ReadWrite.All" -NoWelcome
     }
 
     $ctx = Get-MgContext
@@ -160,6 +160,7 @@ function Add-ExternalMethodToUser {
     $uri = "https://graph.microsoft.com/v1.0/users/$UserId/authentication/externalAuthenticationMethods"
 
     $body = @{
+        "@odata.type"  = "#microsoft.graph.externalAuthenticationMethod"
         configurationId = $ConfigurationId
         displayName     = $DisplayName
     } | ConvertTo-Json -Depth 3
