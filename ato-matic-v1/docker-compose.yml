@@ -1,0 +1,44 @@
+﻿services:
+  db:
+    image: postgres:16-alpine
+    container_name: ato-matic-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-change-me-before-production}
+      POSTGRES_DB: ${DB_NAME:-Bjorn}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-Bjorn}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    image: ${ATO_MATIC_IMAGE:-cogorepo/ato-matic:v1}
+    container_name: ato-matic-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-change-me-before-production}
+      DB_NAME: ${DB_NAME:-Bjorn}
+      DB_PORT: 5432
+      PORT: 8000
+      SESSION_SECRET: ${SESSION_SECRET:-change-me-before-production}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      SNAPSHOT_SCHEDULE_ENABLED: ${SNAPSHOT_SCHEDULE_ENABLED:-true}
+      SNAPSHOT_SCHEDULE_TIME: ${SNAPSHOT_SCHEDULE_TIME:-02:00}
+    ports:
+      - "${APP_PORT:-8000}:8000"
+
+volumes:
+  pgdata:

@@ -1,0 +1,379 @@
+﻿AAA Services
+Active Directory Domain
+Active Directory Forest
+Adobe Acrobat Professional DC Continuous Track
+Adobe Acrobat Reader DC Continuous Track
+Adobe ColdFusion
+Akamai Edge Security ALG
+Akamai Edge Security NDM
+Amazon Linux 2023
+Anduril NixOS
+Apache Server 2.4 UNIX Server
+Apache Server 2.4 UNIX Site
+Apache Server 2.4 Windows Server
+Apache Server 2.4 Windows Site
+Apache Tomcat Application Server 9
+Apple iOS-iPadOS 18
+Apple iOS-iPadOS 26
+Apple macOS 15
+Apple macOS 26 (Tahoe)
+Apple visionOS 2
+Apple visionOS 26
+Application Layer Gateway
+Application Programming Interface (API)
+Application Security and Development
+Application Server
+Arctic Wolf CylanceON-PREM
+Arista MLS EOS 4.X L2S
+Arista MLS EOS 4.X NDM
+Arista MLS EOS 4.X RTR
+AvePoint Compliance Guardian
+AvePoint DocAve 6
+Axonius Federal Systems Ax-OS
+BEMS 2.x
+BIND 9.x VERSION 3
+BlackBerry CylancePROTECT Mobile for UEM
+BlackBerry Enterprise Mobility Server 3.x
+BlackBerry UEM
+CA IDMS
+Canonical Ubuntu 22.04 LTS
+Canonical Ubuntu 24.04 LTS
+Central Log Server
+Cisco ACI L2S
+Cisco ACI NDM
+Cisco ACI RTR
+Cisco ASA Firewall
+Cisco ASA IPS
+Cisco ASA NDM
+Cisco ASA VPN
+Cisco IOS-XE Switch RTR
+Cisco IOS Router NDM
+Cisco IOS Router RTR
+Cisco IOS Switch L2S
+Cisco IOS Switch NDM
+Cisco IOS Switch RTR
+Cisco IOS XE Router NDM
+Cisco IOS XE Router RTR
+Cisco IOS XE Switch L2S
+Cisco IOS XE Switch NDM
+Cisco IOS XR Router NDM
+Cisco IOS XR Router RTR
+Cisco ISE NAC
+Cisco ISE NDM
+Cisco NX-OS Switch L2S
+Cisco NX-OS Switch NDM
+Cisco NX-OS Switch RTR
+Cloud Computing Mission Owner Network
+Cloud Computing Mission Owner Operating System
+Cloud Linux AlmaLinux OS 9
+Container Platform
+Crunchy Data Postgres 16
+Crunchy Data PostgreSQL
+Database Generic
+Dell OS10 Switch Layer 2 Switch
+Dell OS10 Switch NDM
+Dell OS10 Switch Router
+Dragos Platform 2.x
+Enterprise Voice, Video, and Messaging Endpoint
+Enterprise Voice, Video, and Messaging Policy
+Enterprise Voice, Video, and Messaging Session Mgt
+F5 BIG-IP TMOS ALG
+F5 BIG-IP TMOS DNS
+F5 BIG-IP TMOS Firewall
+F5 BIG-IP TMOS NDM
+F5 BIG-IP TMOS VPN
+F5 NGINX
+Firewall
+Forescout Network Access Control
+Forescout Network Device Management
+Fortinet FortiGate Firewall
+Fortinet FortiGate Firewall NDM
+General Purpose Operating System
+Google Android 14 BYOAD
+Google Android 14 COBO
+Google Android 14 COPE
+Google Android 14 MDFPP 3.3 BYOAD
+Google Android 15 COBO
+Google Android 15 COPE
+Google Android 16 COBO
+Google Android 16 COPE
+Google Chrome Current Windows
+Honeywell Android 13 COBO
+Honeywell Android 13 COPE
+HP Flex Fabric Switch 7 L2S
+HP Flex Fabric Switch 7 RTR
+HP FlexFabric Switch NDM
+HPE 3PAR SSMC OS
+HPE 3PAR SSMC Web Server
+HPE 3PAR StoreServ 3.2.x
+HPE 3PAR StoreServ 3.3.x
+HPE Alletra Storage ArcusOS NDM
+HPE Alletra Storage ArcusOS WS
+HPE Aruba Networking AOS NDM
+HPE Aruba Networking AOS VPN
+HPE Aruba Networking AOS Wireless
+HPE Nimble Storage Array NDM
+HYCU Protege
+IBM AIX 7.x
+IBM DataPower XI52 ALG
+IBM DataPower XI52 NDM
+IBM DB2 V10.5 LUW
+IBM Hardware Management Console (HMC)
+IBM MaaS360 with Watson v10.x MDM
+IBM WebSphere Liberty Server
+IBM WebSphere Traditional V9.x
+IBM zOS ACF2
+IBM zOS RACF
+IBM zOS TSS
+IBM zSecure Suite
+IBM zVM Using CA VMSecure
+IDPS
+Infoblox 8.x DNS
+ISEC7 Sphere
+Ivanti Connect Secure NDM
+Ivanti Connect Secure VPN
+Ivanti EPMM Server
+Ivanti Sentry 9.x ALG
+Ivanti Sentry 9.x NDM
+Jamf Pro v10-x EMM
+JBoss Enterprise Application Platform 6.3
+Juniper EX Series Layer 2 Switch
+Juniper EX Series Switches NDM
+Juniper EX Series Switches Router
+Juniper Router NDM
+Juniper Router RTR
+Juniper SRX Services Gateway ALG
+Juniper SRX Services Gateway IDPS
+Juniper SRX Services Gateway VPN
+Juniper SRX SG NDM
+Kubernetes
+Layer 2 Switch
+Mainframe Product
+MariaDB Enterprise 10.x
+MarkLogic Server v9
+Microsoft Azure SQL Managed Instance
+Microsoft Defender Antivirus
+Microsoft Defender for Endpoint
+Microsoft DotNet Framework 4-0
+Microsoft Edge
+Microsoft Entra ID
+Microsoft Exchange 2016 Edge Transport Server
+Microsoft Exchange 2016 Mailbox Server
+Microsoft Exchange 2019 Edge Server
+Microsoft Exchange 2019 Mailbox Server
+Microsoft IIS 10.0 Server
+Microsoft IIS 10.0 Site
+Microsoft Intune MDM Service Desktop & Mobile
+Microsoft Office 365 ProPlus
+Microsoft Windows 11
+Microsoft Windows PAW
+Microsoft Windows Server 2019
+Microsoft Windows Server 2022
+Microsoft Windows Server 2025
+Microsoft Windows Server Domain Name System
+Mirantis Kubernetes Engine
+MobileIron Core 10.x MDM
+MongoDB Enterprise Advanced 7.x
+MongoDB Enterprise Advanced 8.x
+Mozilla Firefox 2021 VERSION
+MS Azure SQL DB
+MS SQL Server 2016 Database
+MS SQL Server 2016 Instance
+MS SQL Server 2022 Database
+MS SQL Server 2022 Instance
+NetApp ONTAP DSC 9.x
+Network Device Management
+Network Infrastructure Policy
+Network WLAN AP-IG Mgmt
+Network WLAN AP-IG Platform
+Network WLAN AP-NIPR Mgmt
+Network WLAN AP-NIPR Platform
+Network WLAN Bridge Mgmt
+Network WLAN Bridge Platform
+Network WLAN Controller Mgmt
+Network WLAN Controller Platform
+Nutanix Acropolis Application Server
+Nutanix Acropolis GPOS
+Okta IDaaS
+Oracle Database 19c
+Oracle Linux 8
+Oracle Linux 9
+Oracle MySQL 8.0
+Palo Alto Networks ALG
+Palo Alto Networks IDPS
+Palo Alto Networks NDM
+Palo Alto Networks Prisma Cloud Compute
+Rancher Government Solutions Multi-Cluster Manager
+Rancher Government Solutions RKE2
+Red Hat Ansible Automation Controller App Server
+Red Hat Ansible Automation Controller Web Server
+Red Hat Enterprise Linux 10
+Red Hat Enterprise Linux 8
+Red Hat Enterprise Linux 9
+Red Hat OpenShift Container Platform 4.x
+Redis Enterprise 6.x
+Riverbed NetIM NDM
+Riverbed NetIM OS
+Riverbed NetProfiler
+Router
+RUCKUS ICX L2 Switch
+RUCKUS ICX NDM
+RUCKUS ICX RTR
+Samsung Android 16 COBO
+Samsung Android 16 COPE
+Samsung SDS EMM
+SEL SDN Switch L2S
+SEL SDN Switch NDM
+Soaring Software Solutions TCMax 9.x
+Solaris 11 SPARC
+Solaris 11 X86
+SPEC Innovations Innoslate 4.x
+SUSE Linux Enterprise Micro (SLEM) 5
+SUSE Linux Enterprise Server 15
+Symantec Edge SWG ALG
+Symantec Edge SWG NDM
+Symantec ProxySG ALG
+Symantec ProxySG NDM
+Tanium 7.x
+Tanium 7.x Application on TanOS
+Tanium 7.x OS on TanOS
+TOSS 4
+Traditional Security Checklist
+Trellix Application Control 8.x
+Trend Micro TippingPoint IDPS
+Trend Micro TippingPoint NDM
+Unified Endpoint Management Agent
+Unified Endpoint Management Server
+Virtual Machine Manager
+Virtual Private Network (VPN)
+VMware NSX-T Distributed Firewall
+VMware NSX-T Manager NDM
+VMware NSX-T SDN Controller
+VMware NSX-T Tier-0 Gateway Firewall
+VMware NSX-T Tier-0 Gateway RTR
+VMware NSX-T Tier 1 Gateway Firewall
+VMware NSX-T Tier 1 Gateway RTR
+VMware NSX 4.x Distributed Firewall
+VMware NSX 4.x Manager NDM
+VMware NSX 4.x Tier-0 Gateway Firewall
+VMware NSX 4.x Tier-0 Gateway Router
+VMware NSX 4.x Tier-1 Gateway Firewall
+VMware NSX 4.x Tier-1 Gateway Router
+VMware vSphere 7.0 ESXi
+VMware vSphere 7.0 VAMI STIG
+VMware vSphere 7.0 vCA EAM
+VMware vSphere 7.0 vCA Lookup Service
+VMware vSphere 7.0 vCA Perfcharts
+VMware vSphere 7.0 vCA Photon OS
+VMware vSphere 7.0 vCA PostgreSQL
+VMware vSphere 7.0 vCA RhttpProxy
+VMware vSphere 7.0 vCA STS
+VMware vSphere 7.0 vCA UI
+VMware vSphere 7.0 vCenter
+VMware vSphere 7.0 Virtual Machine
+VMware vSphere 8.0 ESXi
+VMware vSphere 8.0 vCenter
+VMware vSphere 8.0 VCSA EAM
+VMware vSphere 8.0 VCSA Envoy
+VMware vSphere 8.0 VCSA Lookup Service
+VMware vSphere 8.0 VCSA Perfcharts
+VMware vSphere 8.0 VCSA Photon OS 4.0
+VMware vSphere 8.0 VCSA PostgreSQL
+VMware vSphere 8.0 VCSA Secure Token Service (STS)
+VMware vSphere 8.0 VCSA User Interface (UI)
+VMware vSphere 8.0 VCSA VAMI
+VMware vSphere 8.0 Virtual Machine
+Web Server
+Windows Defender Firewall with Advanced Security
+Xylok Security Suite 20.x
+Zebra Android 13 COBO
+Zebra Android 13 COPE
+Zebra Android 14 COBO
+Zebra Android 14 COPE
+zOS BMC CONTROL-D for ACF2
+zOS BMC CONTROL-D for RACF
+zOS BMC CONTROL-D for TSS
+zOS BMC CONTROL-M Restart for ACF2
+zOS BMC CONTROL-M Restart for RACF
+zOS BMC CONTROL-M Restart for TSS
+zOS BMC CONTROL-O for ACF2
+zOS BMC CONTROL-O for RACF
+zOS BMC CONTROL-O for TSS
+zOS BMC IOA for ACF2
+zOS BMC IOA for RACF
+zOS BMC IOA for TSS
+zOS BMC MAINVIEW for zOS for ACF2
+zOS BMC MAINVIEW for zOS for RACF
+zOS BMC MAINVIEW for zOS for TSS
+zOS CA 1 Tape Management for ACF2
+zOS CA 1 Tape Management for RACF
+zOS CA 1 Tape Management for TSS
+zOS CA Auditor for ACF2
+zOS CA Auditor for RACF
+zOS CA Auditor for TSS
+zOS CA Common Services for ACF2
+zOS CA Common Services for RACF
+zOS CA Common Services for TSS
+zOS CA MICS for ACF2
+zOS CA MICS for TSS
+zOS CA MIM for ACF2
+zOS CA MIM for RACF
+zOS CA MIM for TSS
+zOS CA VTAPE for ACF2
+zOS CA VTAPE for RACF
+zOS CA VTAPE for TSS
+zOS Catalog Solutions for ACF2
+zOS Catalog Solutions for RACF
+zOS Catalog Solutions for TSS
+zOS CLSuperSession for ACF2
+zOS CLSuperSession for RACF
+zOS CLSuperSession for TSS
+zOS Compuware Abend-AID for ACF2
+zOS Compuware Abend-AID for RACF
+zOS Compuware Abend-AID for TSS
+zOS CSSMTP for ACF2
+zOS CSSMTP for RACF
+zOS CSSMTP for TSS
+zOS FDR for ACF2
+zOS FDR for RACF
+zOS FDR for TSS
+zOS Front End Processor for ACF2
+zOS Front End Processor for RACF
+zOS Front End Processor for TSS
+zOS HCD for ACF2
+zOS HCD for RACF
+zOS HCD for TSS
+zOS IBM CICS Transaction Server for ACF2
+zOS IBM CICS Transaction Server for RACF
+zOS IBM CICS Transaction Server for TSS
+zOS IBM Health Checker for ACF2
+zOS IBM Health Checker for RACF
+zOS IBM Health Checker for TSS
+zOS IBM SDSF for ACF2
+zOS IBM SDSF for RACF
+zOS IBM SDSF for TSS
+zOS NetView for ACF2
+zOS NetView for RACF
+zOS NetView for TSS
+zOS Quest NC-Pass for ACF2
+zOS Quest NC-Pass for RACF
+zOS Quest NC-Pass for TSS
+zOS ROSCOE for ACF2
+zOS ROSCOE for RACF
+zOS ROSCOE for TSS
+zOS SRRAUDIT for ACF2
+zOS SRRAUDIT for RACF
+zOS SRRAUDIT for TSS
+zOS TADz for ACF2
+zOS TADz for RACF
+zOS TADz for TSS
+zOS TDMF for ACF2
+zOS TDMF for RACF
+zOS TDMF for TSS
+zOS VSS for RACF
+zOS WebSphere Application Server for ACF2
+zOS Websphere Application Server for RACF
+zOS WebSphere Application Server for TSS
+zOS WebSphere MQ for ACF2
+zOS WebSphere MQ for RACF
+zOS WebSphere MQ for TSS
