@@ -1,139 +1,154 @@
 # Work-Display
 
-A collection of some scripts, tools, and projects I have built while working in IT, system administration, DevOps, security compliance, and automation.
+A collection of practical tools, scripts, and small projects I have built while working in IT, system administration, DevOps, security compliance, and automation.
 
-Feel free to explore, use anything you find helpful, and reach out if you want something built or improved.
+This repo is part portfolio, part toolbox. Some items are polished enough to use directly, while others are preserved as examples of real operational workflows and problem solving.
 
----
+## Featured Projects
 
-## Repository Structure
+| Project | What It Does | Start Here |
+|---|---|---|
+| **ATO-Matic v1** | Docker-based local STIG vulnerability and POA&M tracker with seeded PostgreSQL data. | [projects/ato-matic-v1](./projects/ato-matic-v1) |
+| **KubeNetChecker** | PowerShell Kubernetes network troubleshooting tool with layered diagnosis and JSON/Markdown/HTML reports. | [powershell/kubernetes/KubeNetChecker](./powershell/kubernetes/KubeNetChecker) |
+| **Preload External MFA** | Microsoft Graph / Entra ID automation for preloading external authentication methods during migration work. | [powershell/azure](./powershell/azure) |
 
-### ato-matic-v1
+## Screenshots
 
-Docker-based deployment bundle for **ATO-Matic**, a local web app for working with STIG-based vulnerability data, assets, and POA&M tracking.
+Screenshots are intentionally collapsed so the main page stays readable.
 
-This bundle is intended to let someone spin up their own local instance with Docker Compose.
+<details>
+<summary>ATO-Matic screenshots</summary>
 
-Includes:
-- `docker-compose.yml` for the app and PostgreSQL database
-- `.env.example` for local configuration
-- Seeded PostgreSQL init dump with STIG definitions
-- Default admin account for first login
-- Unique STIG product list for reference
-
-Default login:
-- Username: `ato-admin`
-- Email: `Dadmin@ato-matic.com`
-- Password: `TemPWD2026!!`
-
-Basic startup:
-
-```powershell
-copy .env.example .env
-docker compose up -d
-```
-
-Then open:
+Add screenshots under:
 
 ```text
-http://localhost:8000
+assets/screenshots/ato-matic/
 ```
 
-Important:
-- Change the default admin password after first login.
-- Update `.env` secrets before using this for anything beyond local testing.
-- The database is initialized the first time the Docker volume is created.
+Suggested captures:
 
----
+- dashboard
+- assets page
+- POA&M page
+- admin/config page
 
-### Functions and Modules
+</details>
 
-Reusable PowerShell functions and modules grouped by platform or use case.
+<details>
+<summary>KubeNetChecker screenshots</summary>
 
----
+Add screenshots under:
 
-#### Custom-Active-Directory
+```text
+assets/screenshots/kubenetchecker/
+```
 
-PowerShell functions for simplifying Active Directory operations.
+Suggested captures:
 
-**Copy-AdGroups**
-- Copies or adds group memberships from one user to another
+- terminal diagnosis output
+- exported dark HTML report
+- Markdown preview
 
-Options:
-- `-Clone` - exact copy, removes unmatched groups from target
-- `-Add` - adds groups without removing existing ones
-- `-Type` - `DistributionOnly`, `SecurityOnly`, or `Both`
+</details>
 
----
+<details>
+<summary>Preload External MFA screenshots</summary>
 
-#### Custom-Hyper-V
+Add screenshots under:
 
-PowerShell utilities for Hyper-V environments.
+```text
+assets/screenshots/azure/
+```
 
-**Get-VmInfo**
-- Retrieves VM name, RAM, CPU cores, and disk sizes
-- Works on one VM, multiple VMs, or all VMs
+Suggested captures:
 
----
+- sanitized CSV/template view
+- sanitized run output
+- Graph permission notes
 
-#### STIGS
+</details>
 
-Scripts for processing STIG checklist data for ATO-Matic.
+## Repository Map
 
-Includes:
-- Extraction of STIG checklists from archives
-- XML parsing for required data
-- Import into PostgreSQL
-- Registry check datasets
-- Audit policy check datasets
-- Associated CSV files
+```text
+projects/
+  ato-matic-v1/             Docker Compose deployment bundle for ATO-Matic
 
----
+powershell/
+  active-directory/         AD helper module
+  app-pkg/                  Legacy/internal app packaging module
+  azure/                    Entra ID / Microsoft Graph automation
+  docker/                   Docker helper functions
+  hyper-v/                  Hyper-V utilities
+  kubernetes/               Kubernetes troubleshooting tools
+  stig-etl/                 STIG definition prep/import utilities for ATO-Matic
 
-### App-Pkg.ps1
+discord-bots/               Small Discord bot experiments
+assets/screenshots/         Optional screenshots for repo documentation
+```
 
-Internal packaging script used in an on-prem development environment.
+## Other Tools
 
-Functionality:
-- Packages application code
-- Increments versioning
-- Distributes builds to target locations
+<details>
+<summary>PowerShell: Active Directory</summary>
 
-> Some related deployment scripts, Azure Boards integrations, and pipeline pieces are not included.
+[powershell/active-directory](./powershell/active-directory)
 
----
+Contains a small AD helper module. The main function, `Copy-AdGroups`, copies or adds group memberships from one user to another.
 
-### Az-Scripts
+</details>
 
-Azure-focused scripts and automation.
+<details>
+<summary>PowerShell: Docker Helpers</summary>
 
-Includes:
-- Entra ID and Microsoft Graph automation
-- Deployment and identity utilities
-- Scripts built around real-world admin scenarios
+[powershell/docker/Docker-Helper](./powershell/docker/Docker-Helper)
 
-Example:
-- External MFA / EAM bulk assignment script using Microsoft Graph
-- Designed to preload authentication methods for users during migration
+Small quality-of-life helpers for Docker and Docker Compose in PowerShell.
 
----
+</details>
 
-## Purpose of This Repo
+<details>
+<summary>PowerShell: Hyper-V</summary>
 
-This repo is meant to:
-- Showcase real-world IT tooling and automation
-- Share reusable scripts
-- Provide practical solutions to common admin problems
-- Document projects I have built while solving operational problems
+[powershell/hyper-v](./powershell/hyper-v)
 
----
+Includes `Get-VMInfo`, a small utility for listing VM name, memory, CPU, and disk details.
+
+</details>
+
+<details>
+<summary>PowerShell: STIG ETL</summary>
+
+[powershell/stig-etl](./powershell/stig-etl)
+
+Support scripts used to extract, normalize, and import STIG definition data for ATO-Matic. This is kept partly as an ETL example and partly as project history.
+
+</details>
+
+<details>
+<summary>PowerShell: App-Pkg</summary>
+
+[powershell/app-pkg](./powershell/app-pkg)
+
+Legacy/internal app packaging automation from an on-prem development environment. Paths are sanitized and supporting pipeline pieces are not included.
+
+</details>
+
+<details>
+<summary>Discord Bots</summary>
+
+[discord-bots](./discord-bots)
+
+Small bot experiments and JavaScript automation examples.
+
+</details>
+
+## Notes
+
+- Some scripts contain sanitized paths or placeholders from old work environments.
+- Review scripts before running them in your own environment.
+- The ATO-Matic Docker bundle includes a seeded database dump so the Compose deployment can initialize a working local instance.
 
 ## Requests / Ideas
 
-If you have:
-- a repetitive task
-- something that should be automated
-- a workflow that needs cleanup
-- or a problem you think could be scripted
-
-Feel free to reach out or open an issue.
+If you have a repetitive task, a workflow that needs cleanup, or something that should be automated, feel free to reach out or open an issue.
