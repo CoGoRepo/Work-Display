@@ -23,7 +23,7 @@
     .\KubeNetChecker.ps1 -ServiceName api -Namespace apps -SkipDebugPod -SkipPortForward
 
 .EXAMPLE
-    .\KubeNetChecker.ps1 -ServiceName api -Namespace apps -ExportJson .\net-report.json -ExportMarkdown .\net-report.md
+    .\KubeNetChecker.ps1 -ServiceName api -Namespace apps -ExportJson .\net-report.json -ExportMarkdown .\net-report.md -ExportHtml .\net-report.html
 #>
 
 [CmdletBinding()]
@@ -44,7 +44,8 @@ param(
     [switch]$SkipPortForward,
     [switch]$TestPortForward,
     [string]$ExportJson = "",
-    [string]$ExportMarkdown = ""
+    [string]$ExportMarkdown = "",
+    [string]$ExportHtml = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -984,16 +985,69 @@ if ($script:Diagnoses.Count -eq 0 -and $failures.Count -eq 0) {
     }
 }
 
-if (-not [string]::IsNullOrWhiteSpace($ExportJson)) {
-    $report = [PSCustomObject]@{
-        Namespace  = $Namespace
-        Service    = $ServiceName
-        Deployment = $DeploymentName
-        Timestamp  = (Get-Date).ToString("o")
-        Results    = $script:Results
-        Diagnoses  = $script:Diagnoses
+$reportTimestamp = (Get-Date).ToString("o")
+$allResults = @($script:Results)
+$reportDiagnoses = @($script:Diagnoses)
+$reportSummary = @($allResults | Group-Object Status | Sort-Object Name | ForEach-Object {
+    [PSCustomObject]@{
+        Status = $_.Name
+        Count  = $_.Count
     }
-    $report | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $ExportJson -Encoding UTF8
+})
+$reportFailures = @($allResults | Where-Object Status -eq "FAIL")
+$reportWarnings = @($allResults | Where-Object Status -eq "WARN")
+$reportResultsByLayer = @($allResults | Group-Object Layer | ForEach-Object {
+    [PSCustomObject]@{
+        Layer   = $_.Name
+        Results = @($_.Group | Select-Object Check, Status, Message, Data)
+    }
+})
+
+$report = [PSCustomObject]@{
+    Target = [PSCustomObject]@{
+        Namespace   = $Namespace
+        Service     = $ServiceName
+        Deployment  = $DeploymentName
+        Timestamp   = $reportTimestamp
+        KubeCommand = $script:Kubectl
+        DebugImage  = $DebugImage
+        Scheme      = $Scheme
+        Path        = $Path
+        ExpectedPort = $ExpectedPort
+    }
+    Diagnoses      = $reportDiagnoses
+    StatusSummary  = $reportSummary
+    Failures       = @($reportFailures | Select-Object Layer, Check, Status, Message, Data)
+    Warnings       = @($reportWarnings | Select-Object Layer, Check, Status, Message, Data)
+    ResultsByLayer = $reportResultsByLayer
+    RawResults     = $allResults
+}
+
+function Escape-MarkdownCell {
+    param([string]$Text)
+    if ($null -eq $Text) { return "" }
+    return (($Text -replace "\|", "\|") -replace "`r?`n", "<br>")
+}
+
+function Encode-Html {
+    param([string]$Text)
+    if ($null -eq $Text) { return "" }
+    return [System.Net.WebUtility]::HtmlEncode($Text)
+}
+
+function Convert-InlineMarkdownToHtml {
+    param([string]$Text)
+    $encoded = Encode-Html -Text $Text
+    return ($encoded -replace '`([^`]+)`', '<code>$1</code>')
+}
+
+function Get-StatusClass {
+    param([string]$Status)
+    return "status status-$($Status.ToLower())"
+}
+
+if (-not [string]::IsNullOrWhiteSpace($ExportJson)) {
+    $report | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $ExportJson -Encoding UTF8
     Write-Host ""
     Write-Host "JSON report written to $ExportJson" -ForegroundColor Green
 }
@@ -1002,31 +1056,257 @@ if (-not [string]::IsNullOrWhiteSpace($ExportMarkdown)) {
     $lines = [System.Collections.Generic.List[string]]::new()
     $lines.Add("# Kubernetes Network Check")
     $lines.Add("")
-    $lines.Add("- Namespace: ``$Namespace``")
-    $lines.Add("- Service: ``$ServiceName``")
-    if ($DeploymentName) { $lines.Add("- Deployment: ``$DeploymentName``") }
-    $lines.Add("- Timestamp: ``$((Get-Date).ToString("o"))``")
-    $lines.Add("")
-    $lines.Add("## Results")
-    $lines.Add("")
-    $lines.Add("| Layer | Check | Status | Message |")
-    $lines.Add("|---|---|---|---|")
-    foreach ($result in $script:Results) {
-        $message = ($result.Message -replace "\|", "\|")
-        $lines.Add("| $($result.Layer) | $($result.Check) | $($result.Status) | $message |")
-    }
-    $lines.Add("")
     $lines.Add("## Diagnosis")
     $lines.Add("")
-    if ($script:Diagnoses.Count -eq 0) {
+    if ($reportDiagnoses.Count -eq 0) {
         $lines.Add("- No dominant diagnosis inferred.")
     } else {
-        foreach ($diagnosis in $script:Diagnoses) {
-            $lines.Add("- $diagnosis")
+        foreach ($diagnosis in $reportDiagnoses) { $lines.Add("- $diagnosis") }
+    }
+    $lines.Add("")
+    $lines.Add("## Status Summary")
+    $lines.Add("")
+    $lines.Add("| Status | Count |")
+    $lines.Add("|---|---:|")
+    foreach ($item in $reportSummary) { $lines.Add("| $($item.Status) | $($item.Count) |") }
+    $lines.Add("")
+    $lines.Add("## Failure Summary")
+    $lines.Add("")
+    $lines.Add("| Layer | Check | Message |")
+    $lines.Add("|---|---|---|")
+    if ($reportFailures.Count -eq 0) {
+        $lines.Add("| - | - | No failures found. |")
+    } else {
+        foreach ($failure in $reportFailures) {
+            $lines.Add("| $(Escape-MarkdownCell $failure.Layer) | $(Escape-MarkdownCell $failure.Check) | $(Escape-MarkdownCell $failure.Message) |")
+        }
+    }
+    $lines.Add("")
+    $lines.Add("## Target")
+    $lines.Add("")
+    $lines.Add("| Field | Value |")
+    $lines.Add("|---|---|")
+    $lines.Add("| Namespace | ``$Namespace`` |")
+    $lines.Add("| Service | ``$ServiceName`` |")
+    $lines.Add("| Deployment | ``$DeploymentName`` |")
+    $lines.Add("| Timestamp | ``$reportTimestamp`` |")
+    $lines.Add("| KubeCommand | ``$script:Kubectl`` |")
+    $lines.Add("| DebugImage | ``$DebugImage`` |")
+    $lines.Add("| Scheme | ``$Scheme`` |")
+    $lines.Add("| Path | ``$Path`` |")
+    $lines.Add("| ExpectedPort | ``$ExpectedPort`` |")
+    $lines.Add("")
+    $lines.Add("## Warnings")
+    $lines.Add("")
+    $lines.Add("| Layer | Check | Message |")
+    $lines.Add("|---|---|---|")
+    if ($reportWarnings.Count -eq 0) {
+        $lines.Add("| - | - | No warnings found. |")
+    } else {
+        foreach ($warning in $reportWarnings) {
+            $lines.Add("| $(Escape-MarkdownCell $warning.Layer) | $(Escape-MarkdownCell $warning.Check) | $(Escape-MarkdownCell $warning.Message) |")
+        }
+    }
+    $lines.Add("")
+    $lines.Add("## Results By Layer")
+    foreach ($group in ($allResults | Group-Object Layer)) {
+        $lines.Add("")
+        $lines.Add("### $($group.Name)")
+        $lines.Add("")
+        $lines.Add("| Check | Status | Message |")
+        $lines.Add("|---|---|---|")
+        foreach ($row in $group.Group) {
+            $lines.Add("| $(Escape-MarkdownCell $row.Check) | $($row.Status) | $(Escape-MarkdownCell $row.Message) |")
         }
     }
     $lines | Set-Content -LiteralPath $ExportMarkdown -Encoding UTF8
     Write-Host "Markdown report written to $ExportMarkdown" -ForegroundColor Green
+}
+
+if (-not [string]::IsNullOrWhiteSpace($ExportHtml)) {
+    $targetRows = foreach ($property in $report.Target.PSObject.Properties) {
+        "<tr><th>$(Encode-Html $property.Name)</th><td><code>$(Encode-Html ([string]$property.Value))</code></td></tr>"
+    }
+
+    $diagnosisItems = if ($reportDiagnoses.Count -gt 0) {
+        foreach ($diagnosis in $reportDiagnoses) { "<li>$(Convert-InlineMarkdownToHtml $diagnosis)</li>" }
+    } else {
+        "<li>No dominant diagnosis inferred.</li>"
+    }
+
+    $summaryCards = foreach ($item in $reportSummary) {
+        $className = $item.Status.ToLower()
+        "<div class='stat stat-$className'><span>$(Encode-Html $item.Status)</span><strong>$($item.Count)</strong></div>"
+    }
+
+    $failureRows = if ($reportFailures.Count -gt 0) {
+        foreach ($result in $reportFailures) {
+            "<tr><td>$(Encode-Html $result.Layer)</td><td>$(Encode-Html $result.Check)</td><td><span class='$(Get-StatusClass $result.Status)'>$(Encode-Html $result.Status)</span></td><td>$(Convert-InlineMarkdownToHtml $result.Message)</td></tr>"
+        }
+    } else {
+        "<tr><td colspan='4'>No failures found.</td></tr>"
+    }
+
+    $warningRows = if ($reportWarnings.Count -gt 0) {
+        foreach ($result in $reportWarnings) {
+            "<tr><td>$(Encode-Html $result.Layer)</td><td>$(Encode-Html $result.Check)</td><td><span class='$(Get-StatusClass $result.Status)'>$(Encode-Html $result.Status)</span></td><td>$(Convert-InlineMarkdownToHtml $result.Message)</td></tr>"
+        }
+    } else {
+        "<tr><td colspan='4'>No warnings found.</td></tr>"
+    }
+
+    $layerSections = foreach ($group in ($allResults | Group-Object Layer)) {
+        $rows = foreach ($result in $group.Group) {
+            "<tr><td>$(Encode-Html $result.Check)</td><td><span class='$(Get-StatusClass $result.Status)'>$(Encode-Html $result.Status)</span></td><td>$(Convert-InlineMarkdownToHtml $result.Message)</td></tr>"
+        }
+@"
+<section class='panel'>
+  <h3>$(Encode-Html $group.Name)</h3>
+  <table>
+    <thead><tr><th>Check</th><th>Status</th><th>Message</th></tr></thead>
+    <tbody>$($rows -join "`n")</tbody>
+  </table>
+</section>
+"@
+    }
+
+    $html = @"
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kubernetes Network Check</title>
+<style>
+:root {
+  --bg: #0d1117;
+  --panel: #161b22;
+  --panel-2: #0f1722;
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --border: #30363d;
+  --pass: #3fb950;
+  --fail: #ff6b6b;
+  --warn: #d29922;
+  --skip: #a371f7;
+  --info: #58a6ff;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI", Arial, sans-serif;
+  line-height: 1.5;
+}
+main { max-width: 1220px; margin: 0 auto; padding: 32px 24px 56px; }
+h1 { margin: 0 0 18px; font-size: 34px; letter-spacing: 0; }
+h2 { margin: 0 0 14px; font-size: 22px; }
+h3 { margin: 0 0 12px; font-size: 18px; color: var(--text); }
+.grid { display: grid; grid-template-columns: 1.4fr .9fr; gap: 16px; align-items: start; }
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 18px;
+  margin: 16px 0;
+}
+.diagnosis { border-left: 4px solid var(--fail); }
+.diagnosis ul { margin: 0; padding-left: 20px; }
+.diagnosis li { margin: 8px 0; font-size: 16px; }
+.meta-table th {
+  width: 132px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.meta-table th, .meta-table td {
+  border-bottom: 1px solid var(--border);
+}
+code {
+  background: rgba(110,118,129,.25);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 2px 5px;
+  font-family: Consolas, "Courier New", monospace;
+  overflow-wrap: anywhere;
+}
+.stats { display: grid; grid-template-columns: repeat(5, minmax(90px, 1fr)); gap: 10px; }
+.stat {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+}
+.stat span { display: block; color: var(--muted); font-size: 12px; font-weight: 700; }
+.stat strong { display: block; font-size: 26px; margin-top: 2px; }
+.stat-pass strong { color: var(--pass); }
+.stat-fail strong { color: var(--fail); }
+.stat-warn strong { color: var(--warn); }
+.stat-skip strong { color: var(--skip); }
+.stat-info strong { color: var(--info); }
+table { width: 100%; border-collapse: collapse; }
+th, td {
+  border-bottom: 1px solid var(--border);
+  padding: 10px 12px;
+  text-align: left;
+  vertical-align: top;
+  font-size: 14px;
+}
+th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+tr:last-child td { border-bottom: 0; }
+.status { font-weight: 800; white-space: nowrap; }
+.status-pass { color: var(--pass); }
+.status-fail { color: var(--fail); }
+.status-warn { color: var(--warn); }
+.status-skip { color: var(--skip); }
+.status-info { color: var(--info); }
+@media (max-width: 880px) {
+  main { padding: 22px 12px 40px; }
+  .grid { grid-template-columns: 1fr; }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  table { display: block; overflow-x: auto; }
+}
+</style>
+</head>
+<body>
+<main>
+  <h1>Kubernetes Network Check</h1>
+
+  <section class='grid'>
+    <div class='panel diagnosis'>
+      <h2>Diagnosis</h2>
+      <ul>$($diagnosisItems -join "`n")</ul>
+    </div>
+    <div class='panel'>
+      <h2>Target</h2>
+      <table class='meta-table'><tbody>$($targetRows -join "`n")</tbody></table>
+    </div>
+  </section>
+
+  <section class='panel'>
+    <h2>Status Summary</h2>
+    <div class='stats'>$($summaryCards -join "`n")</div>
+  </section>
+
+  <section class='panel'>
+    <h2>Failures</h2>
+    <table><thead><tr><th>Layer</th><th>Check</th><th>Status</th><th>Message</th></tr></thead><tbody>$($failureRows -join "`n")</tbody></table>
+  </section>
+
+  <section class='panel'>
+    <h2>Warnings</h2>
+    <table><thead><tr><th>Layer</th><th>Check</th><th>Status</th><th>Message</th></tr></thead><tbody>$($warningRows -join "`n")</tbody></table>
+  </section>
+
+  <h2 style='margin-top:28px'>Results By Layer</h2>
+  $($layerSections -join "`n")
+</main>
+</body>
+</html>
+"@
+
+    $html | Set-Content -LiteralPath $ExportHtml -Encoding UTF8
+    Write-Host "HTML report written to $ExportHtml" -ForegroundColor Green
 }
 
 if ($exitCode -eq 0) {

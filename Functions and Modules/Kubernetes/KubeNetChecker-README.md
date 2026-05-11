@@ -178,6 +178,7 @@ If the image cannot be pulled, the debug pod checks will fail and the script wil
 | `-TestPortForward` | false | Run the optional port-forward test. |
 | `-ExportJson` | empty | Write a JSON report to the specified path. |
 | `-ExportMarkdown` | empty | Write a Markdown report to the specified path. |
+| `-ExportHtml` | empty | Write a dark themed HTML report to the specified path. |
 | `-Verbose` | false | Show underlying kubectl commands and extra detail. |
 
 ## Common Examples
@@ -310,7 +311,8 @@ This starts a temporary `kubectl port-forward`, tests localhost access, and stop
   -ServiceName api `
   -Namespace apps `
   -ExportJson .\api-net-check.json `
-  -ExportMarkdown .\api-net-check.md
+  -ExportMarkdown .\api-net-check.md `
+  -ExportHtml .\api-net-check.html
 ```
 
 ### Verbose mode
