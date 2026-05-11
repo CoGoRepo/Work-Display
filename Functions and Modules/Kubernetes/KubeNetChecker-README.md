@@ -1,6 +1,6 @@
 # KC Net Checker
 
-`kc-net-checker.ps1` is a PowerShell Kubernetes network troubleshooting helper.
+`KubeNetChecker.ps1` is a PowerShell Kubernetes network troubleshooting helper.
 
 It walks through a Kubernetes service path layer by layer and tries to show where the problem most likely lives instead of only saying "curl failed."
 
@@ -63,7 +63,7 @@ The script prefers `kc` if it exists. If not, it falls back to `kubectl`.
 Default check:
 
 ```powershell
-.\kc-net-checker.ps1
+.\KubeNetChecker.ps1
 ```
 
 The default values are:
@@ -78,13 +78,13 @@ The default values are:
 Check a specific service:
 
 ```powershell
-.\kc-net-checker.ps1 -ServiceName my-service -Namespace apps
+.\KubeNetChecker.ps1 -ServiceName my-service -Namespace apps
 ```
 
 Check a service and deployment:
 
 ```powershell
-.\kc-net-checker.ps1 `
+.\KubeNetChecker.ps1 `
   -DeploymentName my-api `
   -ServiceName my-api `
   -Namespace apps
@@ -93,7 +93,7 @@ Check a service and deployment:
 Check a specific port and health path:
 
 ```powershell
-.\kc-net-checker.ps1 `
+.\KubeNetChecker.ps1 `
   -ServiceName my-api `
   -Namespace apps `
   -ExpectedPort 8080 `
@@ -107,7 +107,7 @@ In a real production environment, you may not want to create a temporary debug p
 Start with read-mostly checks:
 
 ```powershell
-.\kc-net-checker.ps1 `
+.\KubeNetChecker.ps1 `
   -ServiceName my-service `
   -Namespace prod `
   -SkipDebugPod `
@@ -120,7 +120,7 @@ This checks cluster access, deployment, pods, service configuration, and Endpoin
 If the team allows a temporary diagnostic pod:
 
 ```powershell
-.\kc-net-checker.ps1 `
+.\KubeNetChecker.ps1 `
   -ServiceName my-service `
   -Namespace prod `
   -DebugImage registry.company.local/tools/netshoot:v0.13.0
@@ -139,7 +139,7 @@ nicolaka/netshoot:latest
 For controlled environments, use an approved internal image:
 
 ```powershell
-.\kc-net-checker.ps1 `
+.\KubeNetChecker.ps1 `
   -ServiceName my-service `
   -Namespace prod `
   -DebugImage registry.company.local/tools/netshoot:v0.13.0
@@ -185,19 +185,19 @@ If the image cannot be pulled, the debug pod checks will fail and the script wil
 ### Basic nginx test
 
 ```powershell
-.\kc-net-checker.ps1
+.\KubeNetChecker.ps1
 ```
 
 ### Test a service in another namespace
 
 ```powershell
-.\kc-net-checker.ps1 -ServiceName web -Namespace frontend
+.\KubeNetChecker.ps1 -ServiceName web -Namespace frontend
 ```
 
 ### Test a service with a deployment name
 
 ```powershell
-.\kc-net-checker.ps1 `
+.\KubeNetChecker.ps1 `
   -DeploymentName web `
   -ServiceName web `
   -Namespace frontend
@@ -206,7 +206,7 @@ If the image cannot be pulled, the debug pod checks will fail and the script wil
 ### Test an API health endpoint
 
 ```powershell
-.\kc-net-checker.ps1 `
+.\KubeNetChecker.ps1 `
   -ServiceName orders-api `
   -Namespace apps `
   -ExpectedPort 8080 `
@@ -216,7 +216,7 @@ If the image cannot be pulled, the debug pod checks will fail and the script wil
 ### Test a specific service port
 
 ```powershell
-.\kc-net-checker.ps1 `
+.\KubeNetChecker.ps1 `
   -ServiceName orders-api `
   -Namespace apps `
   -ExpectedPort 8080
@@ -229,7 +229,7 @@ If the expected port is not exposed by the service, the script reports that as t
 ### Test HTTPS
 
 ```powershell
-.\kc-net-checker.ps1 `
+.\KubeNetChecker.ps1 `
   -ServiceName secure-api `
   -Namespace apps `
   -Scheme https `
@@ -240,7 +240,7 @@ If the expected port is not exposed by the service, the script reports that as t
 ### Use a specific pod selector
 
 ```powershell
-.\kc-net-checker.ps1 `
+.\KubeNetChecker.ps1 `
   -ServiceName api-service `
   -Namespace apps `
   -PodSelector "app=api,tier=backend"
@@ -249,7 +249,7 @@ If the expected port is not exposed by the service, the script reports that as t
 ### Use kubectl instead of kc
 
 ```powershell
-.\kc-net-checker.ps1 `
+.\KubeNetChecker.ps1 `
   -KubeCommand kubectl `
   -ServiceName api `
   -Namespace apps
@@ -258,7 +258,7 @@ If the expected port is not exposed by the service, the script reports that as t
 ### Use a full kubectl path
 
 ```powershell
-.\kc-net-checker.ps1 `
+.\KubeNetChecker.ps1 `
   -KubeCommand "C:\Tools\kubectl.exe" `
   -ServiceName api `
   -Namespace apps
@@ -267,7 +267,7 @@ If the expected port is not exposed by the service, the script reports that as t
 ### Skip debug pod checks
 
 ```powershell
-.\kc-net-checker.ps1 `
+.\KubeNetChecker.ps1 `
   -ServiceName api `
   -Namespace prod `
   -SkipDebugPod
@@ -284,7 +284,7 @@ This skips:
 ### Skip NodePort checks
 
 ```powershell
-.\kc-net-checker.ps1 `
+.\KubeNetChecker.ps1 `
   -ServiceName api `
   -Namespace prod `
   -SkipNodePort
@@ -295,7 +295,7 @@ Useful when the service is not exposed by NodePort or when the cluster is cloud/
 ### Run optional port-forward test
 
 ```powershell
-.\kc-net-checker.ps1 `
+.\KubeNetChecker.ps1 `
   -ServiceName api `
   -Namespace apps `
   -TestPortForward
@@ -306,7 +306,7 @@ This starts a temporary `kubectl port-forward`, tests localhost access, and stop
 ### Export JSON and Markdown reports
 
 ```powershell
-.\kc-net-checker.ps1 `
+.\KubeNetChecker.ps1 `
   -ServiceName api `
   -Namespace apps `
   -ExportJson .\api-net-check.json `
@@ -316,7 +316,7 @@ This starts a temporary `kubectl port-forward`, tests localhost access, and stop
 ### Verbose mode
 
 ```powershell
-.\kc-net-checker.ps1 `
+.\KubeNetChecker.ps1 `
   -ServiceName api `
   -Namespace apps `
   -Verbose
@@ -569,7 +569,7 @@ If port-forward works but NodePort fails, the app and service are probably okay.
 Run it with:
 
 ```powershell
-.\kc-net-checker.ps1 -ServiceName api -Namespace apps -TestPortForward
+.\KubeNetChecker.ps1 -ServiceName api -Namespace apps -TestPortForward
 ```
 
 ## Docker Desktop Notes
@@ -613,7 +613,7 @@ Before running full checks, ask whether it is okay to create a temporary diagnos
 Recommended first run:
 
 ```powershell
-.\kc-net-checker.ps1 `
+.\KubeNetChecker.ps1 `
   -ServiceName my-service `
   -Namespace prod `
   -SkipDebugPod `
@@ -624,7 +624,7 @@ Recommended first run:
 Then run full diagnostics only if allowed:
 
 ```powershell
-.\kc-net-checker.ps1 `
+.\KubeNetChecker.ps1 `
   -ServiceName my-service `
   -Namespace prod `
   -DebugImage registry.company.local/tools/netshoot:v0.13.0
@@ -654,7 +654,7 @@ The script is PowerShell, so it can run on:
 On Linux/macOS:
 
 ```bash
-pwsh ./kc-net-checker.ps1 -ServiceName nginx -Namespace default
+pwsh ./KubeNetChecker.ps1 -ServiceName nginx -Namespace default
 ```
 
 The script uses `Start-Process` in a cross-platform way for the optional port-forward test.
@@ -666,7 +666,7 @@ The script uses `Start-Process` in a cross-platform way for the optional port-fo
 Install `kubectl`, add it to PATH, or pass a command:
 
 ```powershell
-.\kc-net-checker.ps1 -KubeCommand kubectl
+.\KubeNetChecker.ps1 -KubeCommand kubectl
 ```
 
 ### The debug pod cannot be created
@@ -682,7 +682,7 @@ Possible causes:
 Try an approved internal image:
 
 ```powershell
-.\kc-net-checker.ps1 `
+.\KubeNetChecker.ps1 `
   -ServiceName api `
   -Namespace prod `
   -DebugImage registry.company.local/tools/netshoot:v0.13.0
@@ -691,7 +691,7 @@ Try an approved internal image:
 Or skip debug pod checks:
 
 ```powershell
-.\kc-net-checker.ps1 -ServiceName api -Namespace prod -SkipDebugPod
+.\KubeNetChecker.ps1 -ServiceName api -Namespace prod -SkipDebugPod
 ```
 
 ### EndpointSlice check fails
@@ -742,7 +742,7 @@ Common with:
 Try:
 
 ```powershell
-.\kc-net-checker.ps1 -ServiceName api -Namespace apps -TestPortForward
+.\KubeNetChecker.ps1 -ServiceName api -Namespace apps -TestPortForward
 ```
 
 ## Exit Codes
