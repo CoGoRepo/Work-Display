@@ -11,19 +11,19 @@
     unless those checks are skipped.
 
 .EXAMPLE
-    .\kc-net-checker.ps1
+    .\KubeNetChecker.ps1
 
 .EXAMPLE
-    .\kc-net-checker.ps1 -DeploymentName nginx -ServiceName nginx -Namespace default
+    .\KubeNetChecker.ps1 -DeploymentName nginx -ServiceName nginx -Namespace default
 
 .EXAMPLE
-    .\kc-net-checker.ps1 -ServiceName api -Namespace apps -ExpectedPort 8080 -Path /health
+    .\KubeNetChecker.ps1 -ServiceName api -Namespace apps -ExpectedPort 8080 -Path /health
 
 .EXAMPLE
-    .\kc-net-checker.ps1 -ServiceName api -Namespace apps -SkipDebugPod -SkipPortForward
+    .\KubeNetChecker.ps1 -ServiceName api -Namespace apps -SkipDebugPod -SkipPortForward
 
 .EXAMPLE
-    .\kc-net-checker.ps1 -ServiceName api -Namespace apps -ExportJson .\net-report.json -ExportMarkdown .\net-report.md
+    .\KubeNetChecker.ps1 -ServiceName api -Namespace apps -ExportJson .\net-report.json -ExportMarkdown .\net-report.md
 #>
 
 [CmdletBinding()]
