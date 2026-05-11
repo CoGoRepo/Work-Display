@@ -37,17 +37,15 @@ Suggested captures:
 <details>
 <summary>KubeNetChecker screenshots</summary>
 
-Add screenshots under:
+KubeNetChecker can export a dark HTML report for sharing troubleshooting results.
 
-```text
-assets/screenshots/kubenetchecker/
-```
+![KubeNetChecker HTML report](./assets/screenshots/kubenetchecker/html-report-1.png)
 
-Suggested captures:
+Additional report screenshots:
 
-- terminal diagnosis output
-- exported dark HTML report
-- Markdown preview
+![KubeNetChecker report details](./assets/screenshots/kubenetchecker/html-report-2.png)
+
+![KubeNetChecker report results](./assets/screenshots/kubenetchecker/html-report-3.png)
 
 </details>
 

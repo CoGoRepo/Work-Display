@@ -1,4 +1,4 @@
-# KC Net Checker
+# KubeNetChecker
 
 `KubeNetChecker.ps1` is a PowerShell Kubernetes network troubleshooting helper.
 
@@ -38,6 +38,36 @@ Primary issue: Service targetPort mismatch.
 Service routing fails, direct pod IP curl works, and targetPort metadata does not match selected pod container ports.
 Current service port mapping: 80->9999.
 ```
+
+## Screenshots
+
+<details>
+<summary>HTML report preview</summary>
+
+![KubeNetChecker HTML report summary](./screenshots/html-report-1.png)
+
+![KubeNetChecker HTML report failures](./screenshots/html-report-2.png)
+
+![KubeNetChecker HTML report layer results](./screenshots/html-report-3.png)
+
+</details>
+
+<details>
+<summary>Terminal output</summary>
+
+![KubeNetChecker terminal output](./screenshots/terminal-output.png)
+
+</details>
+
+## Sample Reports
+
+Sample exports from a deliberately broken `wrong-port` service are included:
+
+- [HTML report](./sample-exports/wrong-port.html)
+- [Markdown report](./sample-exports/wrong-port.md)
+- [JSON report](./sample-exports/wrong-port.json)
+
+GitHub displays HTML files as source. For the rendered HTML report, download/open the file locally in a browser.
 
 ## Requirements
 
@@ -304,7 +334,7 @@ Useful when the service is not exposed by NodePort or when the cluster is cloud/
 
 This starts a temporary `kubectl port-forward`, tests localhost access, and stops the port-forward process.
 
-### Export JSON and Markdown reports
+### Export JSON, Markdown, and HTML reports
 
 ```powershell
 .\KubeNetChecker.ps1 `
