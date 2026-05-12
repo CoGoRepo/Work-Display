@@ -1,14 +1,19 @@
 ﻿{
     "Target":  {
-                   "Namespace":  "default",
+                   "Namespace":  "knc-sample-export",
                    "Service":  "wrong-port",
                    "Deployment":  "wrong-port",
-                   "Timestamp":  "2026-05-11T17:06:42.2775970-05:00",
-                   "KubeCommand":  "kc",
+                   "Timestamp":  "2026-05-12T17:01:49.6205634-05:00",
+                   "KubeCommand":  "kubectl",
                    "DebugImage":  "nicolaka/netshoot:latest",
-                   "Scheme":  "http",
+                   "DebugPodName":  "net-test",
+                   "UrlScheme":  "http",
                    "Path":  "/",
-                   "ExpectedPort":  0
+                   "ServicePort":  0,
+                   "TestPodDns":  false,
+                   "DnsPodName":  "",
+                   "DnsContainer":  "",
+                   "PodDnsExecPod":  ""
                },
     "Diagnoses":  [
                       "Primary issue: service routing fails but direct pod IP curl works. This often means the Service targetPort is wrong or does not match the port the app listens on. Current service port mapping: 80-\u003e9999."
@@ -20,7 +25,7 @@
                           },
                           {
                               "Status":  "INFO",
-                              "Count":  3
+                              "Count":  4
                           },
                           {
                               "Status":  "PASS",
@@ -28,7 +33,7 @@
                           },
                           {
                               "Status":  "SKIP",
-                              "Count":  3
+                              "Count":  4
                           },
                           {
                               "Status":  "WARN",
@@ -47,14 +52,14 @@
                          "Layer":  "Pod-to-Service Networking Layer",
                          "Check":  "service FQDN",
                          "Status":  "FAIL",
-                         "Message":  "http://wrong-port.default.svc.cluster.local:80/ failed from debug pod. This may be DNS, TCP, NetworkPolicy, service routing, or app listener.",
+                         "Message":  "http://wrong-port.knc-sample-export.svc.cluster.local:80/ failed from debug pod. This may be DNS, TCP, NetworkPolicy, service routing, or app listener.",
                          "Data":  null
                      },
                      {
                          "Layer":  "Pod-to-Service Networking Layer",
                          "Check":  "ClusterIP",
                          "Status":  "FAIL",
-                         "Message":  "http://10.96.65.4:80/ failed from debug pod. This may be DNS, TCP, NetworkPolicy, service routing, or app listener.",
+                         "Message":  "http://10.96.244.140:80/ failed from debug pod. This may be DNS, TCP, NetworkPolicy, service routing, or app listener.",
                          "Data":  null
                      }
                  ],
@@ -74,13 +79,13 @@
                                                {
                                                    "Check":  "kubectl",
                                                    "Status":  "PASS",
-                                                   "Message":  "kc is available.",
+                                                   "Message":  "kubectl is available.",
                                                    "Data":  null
                                                },
                                                {
                                                    "Check":  "namespace",
                                                    "Status":  "PASS",
-                                                   "Message":  "Namespace \u0027default\u0027 exists.",
+                                                   "Message":  "Namespace \u0027knc-sample-export\u0027 exists.",
                                                    "Data":  null
                                                }
                                            ]
@@ -132,6 +137,36 @@
                                            ]
                            },
                            {
+                               "Layer":  "Pod-Specific DNS Layer",
+                               "Results":  [
+                                               {
+                                                   "Check":  "wrong-port-7d79745bbd-kcmxb dns spec",
+                                                   "Status":  "INFO",
+                                                   "Message":  "dnsPolicy=ClusterFirst; hostNetwork=False; nameservers=(none); searches=(none); options=(none)",
+                                                   "Data":  {
+                                                                "Pod":  "wrong-port-7d79745bbd-kcmxb",
+                                                                "DnsPolicy":  "ClusterFirst",
+                                                                "HostNetwork":  false,
+                                                                "Nameservers":  [
+
+                                                                                ],
+                                                                "Searches":  [
+
+                                                                             ],
+                                                                "Options":  [
+
+                                                                            ]
+                                                            }
+                                               },
+                                               {
+                                                   "Check":  "pod dns exec",
+                                                   "Status":  "SKIP",
+                                                   "Message":  "Skipped. Add -TestPodDns to exec into a selected pod and test /etc/resolv.conf, nslookup, and getent.",
+                                                   "Data":  null
+                                               }
+                                           ]
+                           },
+                           {
                                "Layer":  "Service Layer",
                                "Results":  [
                                                {
@@ -143,7 +178,7 @@
                                                {
                                                    "Check":  "service details",
                                                    "Status":  "INFO",
-                                                   "Message":  "Type=ClusterIP; ClusterIP=10.96.65.4; Ports=80-\u003e9999/TCP; Selector=app=wrong-port",
+                                                   "Message":  "Type=ClusterIP; ClusterIP=10.96.244.140; Ports=80-\u003e9999/TCP; Selector=app=wrong-port",
                                                    "Data":  null
                                                },
                                                {
@@ -166,7 +201,7 @@
                                                {
                                                    "Check":  "endpoint slices",
                                                    "Status":  "PASS",
-                                                   "Message":  "Ready endpoint IPs: 10.244.2.2",
+                                                   "Message":  "Ready endpoint IPs: 10.244.3.8",
                                                    "Data":  null
                                                },
                                                {
@@ -198,9 +233,9 @@
                                                    "Data":  null
                                                },
                                                {
-                                                   "Check":  "resolve wrong-port.default.svc.cluster.local",
+                                                   "Check":  "resolve wrong-port.knc-sample-export.svc.cluster.local",
                                                    "Status":  "PASS",
-                                                   "Message":  "Debug pod resolved \u0027wrong-port.default.svc.cluster.local\u0027.",
+                                                   "Message":  "Debug pod resolved \u0027wrong-port.knc-sample-export.svc.cluster.local\u0027.",
                                                    "Data":  null
                                                }
                                            ]
@@ -217,13 +252,13 @@
                                                {
                                                    "Check":  "service FQDN",
                                                    "Status":  "FAIL",
-                                                   "Message":  "http://wrong-port.default.svc.cluster.local:80/ failed from debug pod. This may be DNS, TCP, NetworkPolicy, service routing, or app listener.",
+                                                   "Message":  "http://wrong-port.knc-sample-export.svc.cluster.local:80/ failed from debug pod. This may be DNS, TCP, NetworkPolicy, service routing, or app listener.",
                                                    "Data":  null
                                                },
                                                {
                                                    "Check":  "ClusterIP",
                                                    "Status":  "FAIL",
-                                                   "Message":  "http://10.96.65.4:80/ failed from debug pod. This may be DNS, TCP, NetworkPolicy, service routing, or app listener.",
+                                                   "Message":  "http://10.96.244.140:80/ failed from debug pod. This may be DNS, TCP, NetworkPolicy, service routing, or app listener.",
                                                    "Data":  null
                                                }
                                            ]
@@ -232,9 +267,9 @@
                                "Layer":  "Pod-to-Pod Networking Layer",
                                "Results":  [
                                                {
-                                                   "Check":  "curl 10.244.2.2",
+                                                   "Check":  "curl 10.244.3.8",
                                                    "Status":  "PASS",
-                                                   "Message":  "http://10.244.2.2:80/ reachable from debug pod. HTTP status: 200",
+                                                   "Message":  "http://10.244.3.8:80/ reachable from debug pod. HTTP status: 200",
                                                    "Data":  null
                                                }
                                            ]
@@ -278,14 +313,14 @@
                            "Layer":  "Cluster Access",
                            "Check":  "kubectl",
                            "Status":  "PASS",
-                           "Message":  "kc is available.",
+                           "Message":  "kubectl is available.",
                            "Data":  null
                        },
                        {
                            "Layer":  "Cluster Access",
                            "Check":  "namespace",
                            "Status":  "PASS",
-                           "Message":  "Namespace \u0027default\u0027 exists.",
+                           "Message":  "Namespace \u0027knc-sample-export\u0027 exists.",
                            "Data":  null
                        },
                        {
@@ -331,6 +366,33 @@
                            "Data":  null
                        },
                        {
+                           "Layer":  "Pod-Specific DNS Layer",
+                           "Check":  "wrong-port-7d79745bbd-kcmxb dns spec",
+                           "Status":  "INFO",
+                           "Message":  "dnsPolicy=ClusterFirst; hostNetwork=False; nameservers=(none); searches=(none); options=(none)",
+                           "Data":  {
+                                        "Pod":  "wrong-port-7d79745bbd-kcmxb",
+                                        "DnsPolicy":  "ClusterFirst",
+                                        "HostNetwork":  false,
+                                        "Nameservers":  [
+
+                                                        ],
+                                        "Searches":  [
+
+                                                     ],
+                                        "Options":  [
+
+                                                    ]
+                                    }
+                       },
+                       {
+                           "Layer":  "Pod-Specific DNS Layer",
+                           "Check":  "pod dns exec",
+                           "Status":  "SKIP",
+                           "Message":  "Skipped. Add -TestPodDns to exec into a selected pod and test /etc/resolv.conf, nslookup, and getent.",
+                           "Data":  null
+                       },
+                       {
                            "Layer":  "Service Layer",
                            "Check":  "service exists",
                            "Status":  "PASS",
@@ -341,7 +403,7 @@
                            "Layer":  "Service Layer",
                            "Check":  "service details",
                            "Status":  "INFO",
-                           "Message":  "Type=ClusterIP; ClusterIP=10.96.65.4; Ports=80-\u003e9999/TCP; Selector=app=wrong-port",
+                           "Message":  "Type=ClusterIP; ClusterIP=10.96.244.140; Ports=80-\u003e9999/TCP; Selector=app=wrong-port",
                            "Data":  null
                        },
                        {
@@ -362,7 +424,7 @@
                            "Layer":  "Endpoint Mapping Layer",
                            "Check":  "endpoint slices",
                            "Status":  "PASS",
-                           "Message":  "Ready endpoint IPs: 10.244.2.2",
+                           "Message":  "Ready endpoint IPs: 10.244.3.8",
                            "Data":  null
                        },
                        {
@@ -388,9 +450,9 @@
                        },
                        {
                            "Layer":  "DNS Layer",
-                           "Check":  "resolve wrong-port.default.svc.cluster.local",
+                           "Check":  "resolve wrong-port.knc-sample-export.svc.cluster.local",
                            "Status":  "PASS",
-                           "Message":  "Debug pod resolved \u0027wrong-port.default.svc.cluster.local\u0027.",
+                           "Message":  "Debug pod resolved \u0027wrong-port.knc-sample-export.svc.cluster.local\u0027.",
                            "Data":  null
                        },
                        {
@@ -404,21 +466,21 @@
                            "Layer":  "Pod-to-Service Networking Layer",
                            "Check":  "service FQDN",
                            "Status":  "FAIL",
-                           "Message":  "http://wrong-port.default.svc.cluster.local:80/ failed from debug pod. This may be DNS, TCP, NetworkPolicy, service routing, or app listener.",
+                           "Message":  "http://wrong-port.knc-sample-export.svc.cluster.local:80/ failed from debug pod. This may be DNS, TCP, NetworkPolicy, service routing, or app listener.",
                            "Data":  null
                        },
                        {
                            "Layer":  "Pod-to-Service Networking Layer",
                            "Check":  "ClusterIP",
                            "Status":  "FAIL",
-                           "Message":  "http://10.96.65.4:80/ failed from debug pod. This may be DNS, TCP, NetworkPolicy, service routing, or app listener.",
+                           "Message":  "http://10.96.244.140:80/ failed from debug pod. This may be DNS, TCP, NetworkPolicy, service routing, or app listener.",
                            "Data":  null
                        },
                        {
                            "Layer":  "Pod-to-Pod Networking Layer",
-                           "Check":  "curl 10.244.2.2",
+                           "Check":  "curl 10.244.3.8",
                            "Status":  "PASS",
-                           "Message":  "http://10.244.2.2:80/ reachable from debug pod. HTTP status: 200",
+                           "Message":  "http://10.244.3.8:80/ reachable from debug pod. HTTP status: 200",
                            "Data":  null
                        },
                        {

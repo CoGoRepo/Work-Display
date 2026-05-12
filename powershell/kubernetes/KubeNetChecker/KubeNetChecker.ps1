@@ -17,13 +17,16 @@
     .\KubeNetChecker.ps1 -DeploymentName nginx -ServiceName nginx -Namespace default
 
 .EXAMPLE
-    .\KubeNetChecker.ps1 -ServiceName api -Namespace apps -ExpectedPort 8080 -Path /health
+    .\KubeNetChecker.ps1 -ServiceName api -Namespace apps -ServicePort 8080 -Path /health
 
 .EXAMPLE
-    .\KubeNetChecker.ps1 -ServiceName api -Namespace apps -SkipDebugPod -SkipPortForward
+    .\KubeNetChecker.ps1 -ServiceName api -Namespace apps -SkipDebugPod
 
 .EXAMPLE
-    .\KubeNetChecker.ps1 -ServiceName api -Namespace apps -ExportJson .\net-report.json -ExportMarkdown .\net-report.md -ExportHtml .\net-report.html
+    .\KubeNetChecker.ps1 -ServiceName api -Namespace apps -TestPodDns -DnsPodName api-7f8d9c4d5b-x2p6q
+
+.EXAMPLE
+    .\KubeNetChecker.ps1 -ServiceName api -Namespace apps -ExportJson .\net-report.json -ExportHtml .\net-report.html
 #>
 
 [CmdletBinding()]
@@ -31,20 +34,21 @@ param(
     [string]$Namespace = "default",
     [string]$DeploymentName = "",
     [string]$ServiceName = "nginx",
-    [int]$ExpectedPort = 0,
-    [string]$Scheme = "http",
+    [int]$ServicePort = 0,
+    [string]$UrlScheme = "http",
     [string]$Path = "/",
     [string]$PodSelector = "",
     [string]$DebugImage = "nicolaka/netshoot:latest",
-    [string]$TestPodName = "net-test",
+    [string]$DebugPodName = "net-test",
+    [string]$DnsPodName = "",
+    [string]$DnsContainer = "",
     [int]$TimeoutSec = 5,
     [string]$KubeCommand = "",
     [switch]$SkipDebugPod,
     [switch]$SkipNodePort,
-    [switch]$SkipPortForward,
     [switch]$TestPortForward,
+    [switch]$TestPodDns,
     [string]$ExportJson = "",
-    [string]$ExportMarkdown = "",
     [string]$ExportHtml = ""
 )
 
@@ -190,8 +194,8 @@ function Join-LabelSelector {
 function Get-CheckPort {
     param([object]$Service)
 
-    if ($ExpectedPort -gt 0) {
-        return $ExpectedPort
+    if ($ServicePort -gt 0) {
+        return $ServicePort
     }
 
     if ($Service -and $Service.spec.ports.Count -gt 0) {
@@ -221,9 +225,9 @@ function Get-ServiceUrls {
 
     [PSCustomObject]@{
         Port      = $port
-        ShortName = "$Scheme`://$ServiceName`:$port$urlPath"
-        Fqdn      = "$Scheme`://$fqdn`:$port$urlPath"
-        ClusterIp = if ($clusterIp -and $clusterIp -ne "None") { "$Scheme`://$clusterIp`:$port$urlPath" } else { "" }
+        ShortName = "$UrlScheme`://$ServiceName`:$port$urlPath"
+        Fqdn      = "$UrlScheme`://$fqdn`:$port$urlPath"
+        ClusterIp = if ($clusterIp -and $clusterIp -ne "None") { "$UrlScheme`://$clusterIp`:$port$urlPath" } else { "" }
     }
 }
 
@@ -235,8 +239,8 @@ function Get-ServicePortSelection {
     }
 
     $ports = @($Service.spec.ports)
-    if ($ExpectedPort -gt 0) {
-        $match = $ports | Where-Object { [int]$_.port -eq $ExpectedPort } | Select-Object -First 1
+    if ($ServicePort -gt 0) {
+        $match = $ports | Where-Object { [int]$_.port -eq $ServicePort } | Select-Object -First 1
         if ($match) {
             return $match
         }
@@ -370,10 +374,10 @@ function Ensure-DebugPod {
     }
 
     Write-Explain "Creating one temporary debug pod for DNS and network tests. It is removed at the end."
-    Invoke-Kube -Arguments @("delete", "pod", $TestPodName, "-n", $Namespace, "--ignore-not-found=true", "--wait=true") -AllowFailure | Out-Null
+    Invoke-Kube -Arguments @("delete", "pod", $DebugPodName, "-n", $Namespace, "--ignore-not-found=true", "--wait=true") -AllowFailure | Out-Null
 
     $run = Invoke-Kube -Arguments @(
-        "run", $TestPodName,
+        "run", $DebugPodName,
         "--image=$DebugImage",
         "-n", $Namespace,
         "--restart=Never",
@@ -382,7 +386,7 @@ function Ensure-DebugPod {
     ) -AllowFailure
 
     if ($run.ExitCode -ne 0) {
-        Add-Result -Layer "Debug Pod" -Check "create debug pod" -Status "FAIL" -Message "Could not create debug pod '$TestPodName'. Check RBAC, image policy, or image pull access."
+        Add-Result -Layer "Debug Pod" -Check "create debug pod" -Status "FAIL" -Message "Could not create debug pod '$DebugPodName'. Check RBAC, image policy, or image pull access."
         Add-Diagnosis "The script could not create a debug pod, so DNS and inside-cluster network checks could not run. This is usually RBAC, image pull policy, or namespace policy."
         return $false
     }
@@ -390,7 +394,7 @@ function Ensure-DebugPod {
     $script:DebugPodCreated = $true
 
     $wait = Invoke-Kube -Arguments @(
-        "wait", "pod/$TestPodName",
+        "wait", "pod/$DebugPodName",
         "-n", $Namespace,
         "--for=condition=Ready",
         "--timeout=$($TimeoutSec * 6)s"
@@ -403,20 +407,36 @@ function Ensure-DebugPod {
     }
 
     $script:DebugPodReady = $true
-    Add-Result -Layer "Debug Pod" -Check "debug pod ready" -Status "PASS" -Message "Temporary debug pod '$TestPodName' is Ready."
+    Add-Result -Layer "Debug Pod" -Check "debug pod ready" -Status "PASS" -Message "Temporary debug pod '$DebugPodName' is Ready."
     return $true
 }
 
 function Invoke-InDebugPod {
     param([string]$Command)
 
-    Invoke-Kube -Arguments @("exec", "-n", $Namespace, $TestPodName, "--", "sh", "-c", $Command) -AllowFailure
+    Invoke-Kube -Arguments @("exec", "-n", $Namespace, $DebugPodName, "--", "sh", "-c", $Command) -AllowFailure
+}
+
+function Invoke-InPod {
+    param(
+        [string]$PodName,
+        [string]$ContainerName,
+        [string]$Command
+    )
+
+    $args = @("exec", "-n", $Namespace, $PodName)
+    if (-not [string]::IsNullOrWhiteSpace($ContainerName)) {
+        $args += @("-c", $ContainerName)
+    }
+    $args += @("--", "sh", "-c", $Command)
+
+    Invoke-Kube -Arguments $args -AllowFailure
 }
 
 function Remove-DebugPod {
     if ($script:DebugPodCreated) {
-        Write-Verbose "Cleaning up debug pod '$TestPodName'."
-        Invoke-Kube -Arguments @("delete", "pod", $TestPodName, "-n", $Namespace, "--ignore-not-found=true", "--wait=false") -AllowFailure | Out-Null
+        Write-Verbose "Cleaning up debug pod '$DebugPodName'."
+        Invoke-Kube -Arguments @("delete", "pod", $DebugPodName, "-n", $Namespace, "--ignore-not-found=true", "--wait=false") -AllowFailure | Out-Null
     }
 }
 
@@ -442,6 +462,156 @@ function Get-SelectedPods {
     [PSCustomObject]@{
         Selector = $selector
         Pods     = ConvertFrom-KubeJson -Arguments $args
+    }
+}
+
+function Get-PodDnsConfigSummary {
+    param([object]$Pod)
+
+    $policy = [string]$Pod.spec.dnsPolicy
+    if ([string]::IsNullOrWhiteSpace($policy)) {
+        $policy = "(default)"
+    }
+
+    $hostNetwork = $false
+    if ($null -ne $Pod.spec.hostNetwork) {
+        $hostNetwork = [bool]$Pod.spec.hostNetwork
+    }
+
+    $dnsConfig = $Pod.spec.dnsConfig
+    $nameservers = @()
+    $searches = @()
+    $options = @()
+
+    if ($dnsConfig) {
+        $nameservers = @($dnsConfig.nameservers | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+        $searches = @($dnsConfig.searches | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+        foreach ($option in @($dnsConfig.options)) {
+            if ($null -eq $option) { continue }
+            if ([string]::IsNullOrWhiteSpace([string]$option.value)) {
+                $options += [string]$option.name
+            } else {
+                $options += "$($option.name)=$($option.value)"
+            }
+        }
+    }
+
+    [PSCustomObject]@{
+        Pod         = $Pod.metadata.name
+        DnsPolicy   = $policy
+        HostNetwork = $hostNetwork
+        Nameservers = $nameservers
+        Searches    = $searches
+        Options     = $options
+    }
+}
+
+function Get-PodDnsSummaryText {
+    param([object]$Summary)
+
+    $nameserverText = if ($Summary.Nameservers.Count -gt 0) { $Summary.Nameservers -join "," } else { "(none)" }
+    $searchText = if ($Summary.Searches.Count -gt 0) { $Summary.Searches -join "," } else { "(none)" }
+    $optionText = if ($Summary.Options.Count -gt 0) { $Summary.Options -join "," } else { "(none)" }
+    "dnsPolicy=$($Summary.DnsPolicy); hostNetwork=$($Summary.HostNetwork); nameservers=$nameserverText; searches=$searchText; options=$optionText"
+}
+
+function Get-ResolvConfSummary {
+    param([string]$Text)
+
+    $nameservers = @()
+    $searches = @()
+    $options = @()
+
+    foreach ($line in @($Text -split "`r?`n")) {
+        $clean = ($line -replace "#.*$", "").Trim()
+        if ([string]::IsNullOrWhiteSpace($clean)) { continue }
+
+        if ($clean -match "^nameserver\s+(.+)$") {
+            $nameservers += $Matches[1].Trim()
+        } elseif ($clean -match "^search\s+(.+)$") {
+            $searches += @($Matches[1].Trim() -split "\s+" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        } elseif ($clean -match "^options\s+(.+)$") {
+            $options += @($Matches[1].Trim() -split "\s+" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        }
+    }
+
+    [PSCustomObject]@{
+        Nameservers = @($nameservers)
+        Searches    = @($searches)
+        Options     = @($options)
+    }
+}
+
+function Format-DnsList {
+    param([object[]]$Items)
+    if (-not $Items -or @($Items).Count -eq 0) { return "(none)" }
+    return (@($Items) -join ", ")
+}
+
+function Add-PodDnsLookupDiagnosis {
+    param(
+        [object]$Summary,
+        [object]$ResolvSummary,
+        [string]$PodName,
+        [bool]$FqdnFailed,
+        [bool]$ShortFailed,
+        [bool]$FqdnPassed
+    )
+
+    $resolvNameservers = if ($ResolvSummary) { Format-DnsList -Items $ResolvSummary.Nameservers } else { "unknown" }
+    $resolvSearches = if ($ResolvSummary) { Format-DnsList -Items $ResolvSummary.Searches } else { "unknown" }
+
+    if ($FqdnFailed) {
+        if ($Summary.HostNetwork -and $Summary.DnsPolicy -ne "ClusterFirstWithHostNet") {
+            Add-Diagnosis "Primary issue: pod '$PodName' uses hostNetwork with dnsPolicy '$($Summary.DnsPolicy)'. Use dnsPolicy ClusterFirstWithHostNet if this pod needs Kubernetes service DNS."
+            return
+        }
+
+        if ($Summary.DnsPolicy -eq "Default") {
+            Add-Diagnosis "Primary issue: pod '$PodName' uses dnsPolicy Default and is resolving through nameserver(s) $resolvNameservers instead of normal cluster DNS. Remove the override or use dnsPolicy ClusterFirst."
+            return
+        }
+
+        if ($Summary.DnsPolicy -eq "None" -and $Summary.Nameservers.Count -gt 0) {
+            Add-Diagnosis "Primary issue: pod '$PodName' uses custom dnsConfig.nameservers ($($Summary.Nameservers -join ', ')), and service FQDN lookup failed. Point dnsConfig at working cluster DNS or remove custom DNS."
+            return
+        }
+
+        Add-Diagnosis "Primary issue: pod '$PodName' could not resolve the service FQDN. Runtime resolv.conf nameserver(s): $resolvNameservers; search domains: $resolvSearches."
+    }
+
+    if ($ShortFailed) {
+        if ($FqdnPassed) {
+            Add-Diagnosis "Primary issue: pod '$PodName' can resolve the service FQDN but not the short service name. Runtime search domains are $resolvSearches. Add Kubernetes search domains or use the FQDN."
+        } elseif ($Summary.Searches.Count -eq 0 -or ($ResolvSummary -and $ResolvSummary.Searches.Count -eq 0)) {
+            Add-Diagnosis "Likely follow-on issue: pod '$PodName' has no Kubernetes search domains, so short service names may fail. Add namespace.svc.cluster.local, svc.cluster.local, and cluster.local searches, or use FQDNs."
+        }
+    }
+}
+
+function Select-PodForDnsExec {
+    param([object[]]$Pods)
+
+    if ([string]::IsNullOrWhiteSpace($DnsPodName)) {
+        $readyPods = @($Pods | Where-Object {
+            $readyCondition = $_.status.conditions | Where-Object { $_.type -eq "Ready" } | Select-Object -First 1
+            $_.status.phase -eq "Running" -and $readyCondition.status -eq "True"
+        })
+        if ($readyPods.Count -gt 0) {
+            return ($readyPods | Select-Object -First 1)
+        }
+        return (@($Pods | Where-Object { $_.status.phase -eq "Running" }) | Select-Object -First 1)
+    }
+
+    $selected = @($Pods | Where-Object { $_.metadata.name -eq $DnsPodName }) | Select-Object -First 1
+    if ($selected) {
+        return $selected
+    }
+
+    try {
+        return ConvertFrom-KubeJson -Arguments @("get", "pod", $DnsPodName, "-n", $Namespace)
+    } catch {
+        return $null
     }
 }
 
@@ -473,7 +643,8 @@ $podIpCurlPasses = 0
 $declaredContainerPorts = @()
 $selectedServicePort = $null
 $targetPortAnalysis = $null
-$expectedPortMissing = $false
+$ServicePortMissing = $false
+$podDnsExecPod = ""
 
 try {
     Write-Host "Kubernetes network checker" -ForegroundColor White
@@ -481,7 +652,7 @@ try {
     Write-Host "Namespace:  $Namespace" -ForegroundColor DarkGray
     Write-Host "Service:    $ServiceName" -ForegroundColor DarkGray
     if ($DeploymentName) { Write-Host "Deployment: $DeploymentName" -ForegroundColor DarkGray }
-    Write-Host "Debug pod:  $TestPodName ($DebugImage)" -ForegroundColor DarkGray
+    Write-Host "Debug pod:  $DebugPodName ($DebugImage)" -ForegroundColor DarkGray
 
     Write-Section "Cluster Access"
     Write-Explain "Validates that kubectl can run and that the target namespace exists."
@@ -644,6 +815,110 @@ try {
         Add-Result -Layer "Pod Health Layer" -Check "pod inspection" -Status "WARN" -Message "Could not inspect pods: $($_.Exception.Message)"
     }
 
+    Write-Section "Pod-Specific DNS Layer"
+    Write-Explain "Inspects dnsPolicy, dnsConfig, and hostNetwork for the selected workload pods. Optional exec tests run only with -TestPodDns."
+    if (-not $podData -or -not $podData.Pods -or @($podData.Pods.items).Count -eq 0) {
+        Add-Result -Layer "Pod-Specific DNS Layer" -Check "pod dns metadata" -Status "SKIP" -Message "Skipped because no selected pods were available."
+    } else {
+        $pods = @($podData.Pods.items)
+        $dnsSummaries = @()
+        foreach ($pod in $pods) {
+            $summary = Get-PodDnsConfigSummary -Pod $pod
+            $dnsSummaries += $summary
+            Add-Result -Layer "Pod-Specific DNS Layer" -Check "$($summary.Pod) dns spec" -Status "INFO" -Message (Get-PodDnsSummaryText -Summary $summary) -Data $summary
+
+            if ($summary.HostNetwork -and $summary.DnsPolicy -ne "ClusterFirstWithHostNet") {
+                Add-Result -Layer "Pod-Specific DNS Layer" -Check "$($summary.Pod) hostNetwork dnsPolicy" -Status "WARN" -Message "Pod uses hostNetwork but dnsPolicy is '$($summary.DnsPolicy)'. Kubernetes service DNS usually requires ClusterFirstWithHostNet for host-networked pods."
+                Add-Diagnosis "A hostNetwork pod is not using dnsPolicy ClusterFirstWithHostNet. If only that pod has DNS issues, check its pod DNS policy."
+            } elseif ($summary.DnsPolicy -eq "Default") {
+                Add-Result -Layer "Pod-Specific DNS Layer" -Check "$($summary.Pod) dnsPolicy" -Status "WARN" -Message "Pod dnsPolicy is Default, so it inherits node DNS instead of Kubernetes cluster DNS."
+                Add-Diagnosis "A selected pod uses dnsPolicy Default, so it may not use Kubernetes cluster DNS. If only this workload has DNS issues, check the pod DNS policy."
+            } elseif ($summary.DnsPolicy -eq "None") {
+                if ($summary.Nameservers.Count -eq 0) {
+                    Add-Result -Layer "Pod-Specific DNS Layer" -Check "$($summary.Pod) dnsConfig" -Status "WARN" -Message "Pod dnsPolicy is None but no dnsConfig.nameservers were found."
+                    Add-Diagnosis "A selected pod uses dnsPolicy None without visible nameservers. Check dnsConfig before debugging service networking."
+                } else {
+                    Add-Result -Layer "Pod-Specific DNS Layer" -Check "$($summary.Pod) dnsConfig" -Status "INFO" -Message "Pod dnsPolicy is None and supplies custom nameserver(s): $($summary.Nameservers -join ', ')."
+                    if ($summary.Searches.Count -eq 0) {
+                        Add-Result -Layer "Pod-Specific DNS Layer" -Check "$($summary.Pod) dnsConfig searches" -Status "WARN" -Message "Pod dnsPolicy is None and does not define search domains. FQDN lookups may work while short service names fail."
+                        Add-Diagnosis "A selected pod uses custom DNS without search domains. If FQDN lookup works but short service-name lookup fails, add Kubernetes search domains or use FQDNs."
+                    }
+                }
+            }
+        }
+
+        if ($TestPodDns) {
+            $podForDns = Select-PodForDnsExec -Pods $pods
+            if (-not $podForDns) {
+                Add-Result -Layer "Pod-Specific DNS Layer" -Check "pod dns exec" -Status "SKIP" -Message "No running pod was available for pod DNS exec tests."
+            } else {
+                $podDnsExecPod = $podForDns.metadata.name
+                $podDnsExecSummary = Get-PodDnsConfigSummary -Pod $podForDns
+                $resolvSummary = $null
+                $fqdnLookupFailed = $false
+                $fqdnLookupPassed = $false
+                $shortLookupFailed = $false
+                Add-Result -Layer "Pod-Specific DNS Layer" -Check "pod dns exec target" -Status "INFO" -Message "Running pod DNS exec tests in pod '$podDnsExecPod'."
+                $podDnsExecSelected = @($pods | Where-Object { $_.metadata.name -eq $podDnsExecPod }).Count -gt 0
+                if (-not $podDnsExecSelected) {
+                    Add-Result -Layer "Pod-Specific DNS Layer" -Check "pod dns exec target" -Status "WARN" -Message "Pod '$podDnsExecPod' is not part of the selected workload. DNS exec results may not represent service '$ServiceName'."
+                    Add-Diagnosis "Pod DNS exec was run against a pod outside the selected workload. Confirm -DnsPodName or rerun against a selected pod before using those DNS results."
+                }
+
+                $resolv = Invoke-InPod -PodName $podDnsExecPod -ContainerName $DnsContainer -Command "cat /etc/resolv.conf"
+                if ($resolv.ExitCode -eq 0) {
+                    $resolvSummary = Get-ResolvConfSummary -Text $resolv.Text
+                    Add-Result -Layer "Pod-Specific DNS Layer" -Check "resolv.conf" -Status "PASS" -Message "Read /etc/resolv.conf from pod '$podDnsExecPod'." -Data $resolv.Text
+                    if ($resolv.Text) { Write-Host $resolv.Text -ForegroundColor DarkGray }
+                } else {
+                    Add-Result -Layer "Pod-Specific DNS Layer" -Check "resolv.conf" -Status "FAIL" -Message "Could not read /etc/resolv.conf from pod '$podDnsExecPod'. Exec may be blocked or the container may not include sh/cat."
+                }
+
+                if ($service) {
+                    $dnsName = "$ServiceName.$Namespace.svc.cluster.local"
+                    $nslookup = Invoke-InPod -PodName $podDnsExecPod -ContainerName $DnsContainer -Command "if command -v nslookup >/dev/null 2>&1; then nslookup $dnsName; else echo KubeNetCheckerToolMissing:nslookup; exit 127; fi"
+                    if ($nslookup.ExitCode -eq 0) {
+                        $fqdnLookupPassed = $true
+                        Add-Result -Layer "Pod-Specific DNS Layer" -Check "pod nslookup" -Status "PASS" -Message "Pod '$podDnsExecPod' resolved '$dnsName' with nslookup."
+                    } elseif ($nslookup.ExitCode -eq 127 -or $nslookup.Text -match "KubeNetCheckerToolMissing:nslookup") {
+                        Add-Result -Layer "Pod-Specific DNS Layer" -Check "pod nslookup" -Status "SKIP" -Message "Skipped nslookup inside pod '$podDnsExecPod' because nslookup is not installed in the selected container."
+                    } else {
+                        $fqdnLookupFailed = $true
+                        Add-Result -Layer "Pod-Specific DNS Layer" -Check "pod nslookup" -Status "WARN" -Message "Pod '$podDnsExecPod' could not resolve '$dnsName' with nslookup. Pod DNS may be broken for this workload."
+                        if ($nslookup.Text) { Write-Host $nslookup.Text -ForegroundColor DarkGray }
+                    }
+
+                    $shortNslookup = Invoke-InPod -PodName $podDnsExecPod -ContainerName $DnsContainer -Command "if command -v nslookup >/dev/null 2>&1; then nslookup $ServiceName; else echo KubeNetCheckerToolMissing:nslookup; exit 127; fi"
+                    if ($shortNslookup.ExitCode -eq 0) {
+                        Add-Result -Layer "Pod-Specific DNS Layer" -Check "pod nslookup short name" -Status "PASS" -Message "Pod '$podDnsExecPod' resolved short service name '$ServiceName' with nslookup."
+                    } elseif ($shortNslookup.ExitCode -eq 127 -or $shortNslookup.Text -match "KubeNetCheckerToolMissing:nslookup") {
+                        Add-Result -Layer "Pod-Specific DNS Layer" -Check "pod nslookup short name" -Status "SKIP" -Message "Skipped short-name nslookup inside pod '$podDnsExecPod' because nslookup is not installed in the selected container."
+                    } else {
+                        $shortLookupFailed = $true
+                        Add-Result -Layer "Pod-Specific DNS Layer" -Check "pod nslookup short name" -Status "WARN" -Message "Pod '$podDnsExecPod' could not resolve short service name '$ServiceName'. DNS search domains may be missing or wrong for this workload."
+                        if ($shortNslookup.Text) { Write-Host $shortNslookup.Text -ForegroundColor DarkGray }
+                    }
+
+                    $getent = Invoke-InPod -PodName $podDnsExecPod -ContainerName $DnsContainer -Command "if command -v getent >/dev/null 2>&1; then getent hosts $dnsName; else echo KubeNetCheckerToolMissing:getent; exit 127; fi"
+                    if ($getent.ExitCode -eq 0) {
+                        Add-Result -Layer "Pod-Specific DNS Layer" -Check "pod getent" -Status "PASS" -Message "Pod '$podDnsExecPod' resolved '$dnsName' with getent hosts."
+                    } elseif ($getent.ExitCode -eq 127 -or $getent.Text -match "KubeNetCheckerToolMissing:getent") {
+                        Add-Result -Layer "Pod-Specific DNS Layer" -Check "pod getent" -Status "SKIP" -Message "Skipped getent hosts inside pod '$podDnsExecPod' because getent is not installed in the selected container."
+                    } else {
+                        Add-Result -Layer "Pod-Specific DNS Layer" -Check "pod getent" -Status "WARN" -Message "Pod '$podDnsExecPod' could not resolve '$dnsName' with getent hosts. Pod DNS may be broken for this workload."
+                        if ($getent.Text) { Write-Host $getent.Text -ForegroundColor DarkGray }
+                    }
+
+                    Add-PodDnsLookupDiagnosis -Summary $podDnsExecSummary -ResolvSummary $resolvSummary -PodName $podDnsExecPod -FqdnFailed $fqdnLookupFailed -ShortFailed $shortLookupFailed -FqdnPassed $fqdnLookupPassed
+                } else {
+                    Add-Result -Layer "Pod-Specific DNS Layer" -Check "pod dns lookup" -Status "SKIP" -Message "Skipped service-name lookups because the service does not exist."
+                }
+            }
+        } else {
+            Add-Result -Layer "Pod-Specific DNS Layer" -Check "pod dns exec" -Status "SKIP" -Message "Skipped. Add -TestPodDns to exec into a selected pod and test /etc/resolv.conf, nslookup, and getent."
+        }
+    }
+
     Write-Section "Service Layer"
     Write-Explain "Checks service type, ClusterIP, NodePort, and selector labels."
     if ($service) {
@@ -670,14 +945,14 @@ try {
             }
         }
 
-        if ($ExpectedPort -gt 0) {
-            $matchingPort = @($service.spec.ports | Where-Object { [int]$_.port -eq $ExpectedPort })
+        if ($ServicePort -gt 0) {
+            $matchingPort = @($service.spec.ports | Where-Object { [int]$_.port -eq $ServicePort })
             if ($matchingPort.Count -gt 0) {
-                Add-Result -Layer "Service Layer" -Check "expected port" -Status "PASS" -Message "Expected port $ExpectedPort exists on the service."
+                Add-Result -Layer "Service Layer" -Check "service port" -Status "PASS" -Message "Service port $ServicePort exists on the service."
             } else {
-                $expectedPortMissing = $true
-                Add-Result -Layer "Service Layer" -Check "expected port" -Status "FAIL" -Message "Expected port $ExpectedPort was not found on the service."
-                Add-Diagnosis "Primary issue: the service does not expose expected port $ExpectedPort. Check the service port definition or rerun with the port the service actually exposes."
+                $ServicePortMissing = $true
+                Add-Result -Layer "Service Layer" -Check "service port" -Status "FAIL" -Message "Service port $ServicePort was not found on the service."
+                Add-Diagnosis "Primary issue: the service does not expose expected port $ServicePort. Check the service port definition or rerun with the port the service actually exposes."
             }
         }
     } else {
@@ -750,8 +1025,8 @@ try {
 
     Write-Section "Pod-to-Service Networking Layer"
     Write-Explain "Curls the service name and ClusterIP from inside the cluster to separate DNS issues from service routing issues."
-    if ($expectedPortMissing) {
-        Add-Result -Layer "Pod-to-Service Networking Layer" -Check "service curl" -Status "SKIP" -Message "Skipped because expected port $ExpectedPort is not exposed by the service. Curl failures would be expected."
+    if ($ServicePortMissing) {
+        Add-Result -Layer "Pod-to-Service Networking Layer" -Check "service curl" -Status "SKIP" -Message "Skipped because service port $ServicePort is not exposed by the service. Curl failures would be expected."
     } elseif ($debugReady -and $service -and $endpointIps.Count -eq 0) {
         Add-Result -Layer "Pod-to-Service Networking Layer" -Check "service curl" -Status "SKIP" -Message "Skipped because the service has no ready endpoints. Curl failures would be expected until pods are Ready and mapped."
     } elseif ($debugReady -and $service) {
@@ -783,14 +1058,14 @@ try {
 
     Write-Section "Pod-to-Pod Networking Layer"
     Write-Explain "Curls pod IPs directly from inside the cluster. If this fails while pods are Ready, suspect overlay/CNI or app bind/listen issues."
-    if ($expectedPortMissing) {
-        Add-Result -Layer "Pod-to-Pod Networking Layer" -Check "pod ip curl" -Status "SKIP" -Message "Skipped because expected port $ExpectedPort is not exposed by the service. Pick the service port first, then compare pod reachability."
+    if ($ServicePortMissing) {
+        Add-Result -Layer "Pod-to-Pod Networking Layer" -Check "pod ip curl" -Status "SKIP" -Message "Skipped because service port $ServicePort is not exposed by the service. Pick the service port first, then compare pod reachability."
     } elseif ($debugReady -and $podIps.Count -gt 0 -and ($selectedPodCount -gt 0 -and $readyPodCount -lt $selectedPodCount)) {
         Add-Result -Layer "Pod-to-Pod Networking Layer" -Check "pod ip curl" -Status "SKIP" -Message "Skipped because selected pods are not Ready. Direct pod curl failures would be expected."
     } elseif ($debugReady -and $podIps.Count -gt 0) {
         $urls = Get-ServiceUrls -Service $service
         foreach ($podIp in @($podIps | Sort-Object -Unique)) {
-            $url = "$Scheme`://$podIp`:$($urls.Port)$(Get-UrlPath)"
+            $url = "$UrlScheme`://$podIp`:$($urls.Port)$(Get-UrlPath)"
             $curl = Invoke-InDebugPod -Command "curl -sS -o /dev/null -w 'HTTP_STATUS=%{http_code}' --connect-timeout $TimeoutSec '$url'"
             if ($curl.ExitCode -eq 0) {
                 $podIpCurlPasses++
@@ -832,7 +1107,7 @@ try {
         } elseif ($debugReady) {
             foreach ($nodePort in $nodePorts) {
                 foreach ($nodeIp in @($nodeIps | Sort-Object -Unique)) {
-                    $url = "$Scheme`://$nodeIp`:$nodePort$(Get-UrlPath)"
+                    $url = "$UrlScheme`://$nodeIp`:$nodePort$(Get-UrlPath)"
                     $curl = Invoke-InDebugPod -Command "curl -sS -o /dev/null -w 'HTTP_STATUS=%{http_code}' --connect-timeout $TimeoutSec '$url'"
                     if ($curl.ExitCode -eq 0) {
                         $statusCode = Get-HttpStatusFromText -Text $curl.Text
@@ -857,7 +1132,7 @@ try {
     } else {
         foreach ($nodePort in $nodePorts) {
             foreach ($nodeIp in @($nodeIps | Sort-Object -Unique)) {
-                $url = "$Scheme`://$nodeIp`:$nodePort$(Get-UrlPath)"
+                $url = "$UrlScheme`://$nodeIp`:$nodePort$(Get-UrlPath)"
                 Write-Explain "Testing from Windows host: $url"
                 $local = Test-LocalHttp -Url $url
                 if ($local.Ok) {
@@ -873,18 +1148,18 @@ try {
 
     Write-Section "Optional Port-Forward Validation"
     Write-Explain "Port-forward can prove the service/pod works even when NodePort or host routing fails."
-    if ($SkipPortForward -or -not $TestPortForward) {
+    if (-not $TestPortForward) {
         Add-Result -Layer "Optional Port-Forward Validation" -Check "port-forward" -Status "SKIP" -Message "Skipped. Add -TestPortForward to run this check."
     } elseif (-not $service) {
         Add-Result -Layer "Optional Port-Forward Validation" -Check "port-forward" -Status "SKIP" -Message "Skipped because the service does not exist."
     } else {
-        $servicePort = Get-CheckPort -Service $service
+        $portForwardServicePort = Get-CheckPort -Service $service
         $localPort = Get-Random -Minimum 20000 -Maximum 45000
         $pfOut = [System.IO.Path]::GetTempFileName()
         $pfErr = [System.IO.Path]::GetTempFileName()
         $process = $null
         try {
-            $argLine = "port-forward -n $Namespace svc/$ServiceName $localPort`:$servicePort"
+            $argLine = "port-forward -n $Namespace svc/$ServiceName $localPort`:$portForwardServicePort"
             Write-Verbose "$script:Kubectl $argLine"
             $startProcessParams = @{
                 FilePath               = $script:Kubectl
@@ -898,7 +1173,7 @@ try {
             }
             $process = Start-Process @startProcessParams
             Start-Sleep -Seconds 2
-            $url = "$Scheme`://127.0.0.1`:$localPort$(Get-UrlPath)"
+            $url = "$UrlScheme`://127.0.0.1`:$localPort$(Get-UrlPath)"
             $pfTest = Test-LocalHttp -Url $url
             if ($pfTest.Ok) {
                 Add-Result -Layer "Optional Port-Forward Validation" -Check "port-forward" -Status "PASS" -Message "Port-forward to svc/$ServiceName worked on localhost:$localPort. HTTP status: $($pfTest.StatusCode)"
@@ -920,7 +1195,7 @@ try {
         Add-Diagnosis "Internal service routing is healthy, but the Windows host cannot reach NodePort. Likely Docker Desktop/WSL/VM networking, firewall, or host routing."
     }
 
-    if ($expectedPortMissing) {
+    if ($ServicePortMissing) {
         # The missing expected port is already the useful diagnosis. Avoid adding targetPort guesses.
     } elseif ($serviceCurlFailures -gt 0 -and $podIpCurlPasses -gt 0 -and $service -and $endpointIps.Count -gt 0) {
         $portMappings = @($service.spec.ports | ForEach-Object { "$($_.port)->$($_.targetPort)" }) -join ", "
@@ -1007,9 +1282,14 @@ $report = [PSCustomObject]@{
         Timestamp   = $reportTimestamp
         KubeCommand = $script:Kubectl
         DebugImage  = $DebugImage
-        Scheme      = $Scheme
+        DebugPodName = $DebugPodName
+        UrlScheme   = $UrlScheme
         Path        = $Path
-        ExpectedPort = $ExpectedPort
+        ServicePort = $ServicePort
+        TestPodDns = [bool]$TestPodDns
+        DnsPodName = $DnsPodName
+        DnsContainer = $DnsContainer
+        PodDnsExecPod = $podDnsExecPod
     }
     Diagnoses      = $reportDiagnoses
     StatusSummary  = $reportSummary
@@ -1019,19 +1299,13 @@ $report = [PSCustomObject]@{
     RawResults     = $allResults
 }
 
-function Escape-MarkdownCell {
-    param([string]$Text)
-    if ($null -eq $Text) { return "" }
-    return (($Text -replace "\|", "\|") -replace "`r?`n", "<br>")
-}
-
 function Encode-Html {
     param([string]$Text)
     if ($null -eq $Text) { return "" }
     return [System.Net.WebUtility]::HtmlEncode($Text)
 }
 
-function Convert-InlineMarkdownToHtml {
+function Convert-InlineCodeToHtml {
     param([string]$Text)
     $encoded = Encode-Html -Text $Text
     return ($encoded -replace '`([^`]+)`', '<code>$1</code>')
@@ -1048,84 +1322,13 @@ if (-not [string]::IsNullOrWhiteSpace($ExportJson)) {
     Write-Host "JSON report written to $ExportJson" -ForegroundColor Green
 }
 
-if (-not [string]::IsNullOrWhiteSpace($ExportMarkdown)) {
-    $lines = [System.Collections.Generic.List[string]]::new()
-    $lines.Add("# Kubernetes Network Check")
-    $lines.Add("")
-    $lines.Add("## Diagnosis")
-    $lines.Add("")
-    if ($reportDiagnoses.Count -eq 0) {
-        $lines.Add("- No dominant diagnosis inferred.")
-    } else {
-        foreach ($diagnosis in $reportDiagnoses) { $lines.Add("- $diagnosis") }
-    }
-    $lines.Add("")
-    $lines.Add("## Status Summary")
-    $lines.Add("")
-    $lines.Add("| Status | Count |")
-    $lines.Add("|---|---:|")
-    foreach ($item in $reportSummary) { $lines.Add("| $($item.Status) | $($item.Count) |") }
-    $lines.Add("")
-    $lines.Add("## Failure Summary")
-    $lines.Add("")
-    $lines.Add("| Layer | Check | Message |")
-    $lines.Add("|---|---|---|")
-    if ($reportFailures.Count -eq 0) {
-        $lines.Add("| - | - | No failures found. |")
-    } else {
-        foreach ($failure in $reportFailures) {
-            $lines.Add("| $(Escape-MarkdownCell $failure.Layer) | $(Escape-MarkdownCell $failure.Check) | $(Escape-MarkdownCell $failure.Message) |")
-        }
-    }
-    $lines.Add("")
-    $lines.Add("## Target")
-    $lines.Add("")
-    $lines.Add("| Field | Value |")
-    $lines.Add("|---|---|")
-    $lines.Add("| Namespace | ``$Namespace`` |")
-    $lines.Add("| Service | ``$ServiceName`` |")
-    $lines.Add("| Deployment | ``$DeploymentName`` |")
-    $lines.Add("| Timestamp | ``$reportTimestamp`` |")
-    $lines.Add("| KubeCommand | ``$script:Kubectl`` |")
-    $lines.Add("| DebugImage | ``$DebugImage`` |")
-    $lines.Add("| Scheme | ``$Scheme`` |")
-    $lines.Add("| Path | ``$Path`` |")
-    $lines.Add("| ExpectedPort | ``$ExpectedPort`` |")
-    $lines.Add("")
-    $lines.Add("## Warnings")
-    $lines.Add("")
-    $lines.Add("| Layer | Check | Message |")
-    $lines.Add("|---|---|---|")
-    if ($reportWarnings.Count -eq 0) {
-        $lines.Add("| - | - | No warnings found. |")
-    } else {
-        foreach ($warning in $reportWarnings) {
-            $lines.Add("| $(Escape-MarkdownCell $warning.Layer) | $(Escape-MarkdownCell $warning.Check) | $(Escape-MarkdownCell $warning.Message) |")
-        }
-    }
-    $lines.Add("")
-    $lines.Add("## Results By Layer")
-    foreach ($group in ($allResults | Group-Object Layer)) {
-        $lines.Add("")
-        $lines.Add("### $($group.Name)")
-        $lines.Add("")
-        $lines.Add("| Check | Status | Message |")
-        $lines.Add("|---|---|---|")
-        foreach ($row in $group.Group) {
-            $lines.Add("| $(Escape-MarkdownCell $row.Check) | $($row.Status) | $(Escape-MarkdownCell $row.Message) |")
-        }
-    }
-    $lines | Set-Content -LiteralPath $ExportMarkdown -Encoding UTF8
-    Write-Host "Markdown report written to $ExportMarkdown" -ForegroundColor Green
-}
-
 if (-not [string]::IsNullOrWhiteSpace($ExportHtml)) {
     $targetRows = foreach ($property in $report.Target.PSObject.Properties) {
         "<tr><th>$(Encode-Html $property.Name)</th><td><code>$(Encode-Html ([string]$property.Value))</code></td></tr>"
     }
 
     $diagnosisItems = if ($reportDiagnoses.Count -gt 0) {
-        foreach ($diagnosis in $reportDiagnoses) { "<li>$(Convert-InlineMarkdownToHtml $diagnosis)</li>" }
+        foreach ($diagnosis in $reportDiagnoses) { "<li>$(Convert-InlineCodeToHtml $diagnosis)</li>" }
     } else {
         "<li>No dominant diagnosis inferred.</li>"
     }
@@ -1137,7 +1340,7 @@ if (-not [string]::IsNullOrWhiteSpace($ExportHtml)) {
 
     $failureRows = if ($reportFailures.Count -gt 0) {
         foreach ($result in $reportFailures) {
-            "<tr><td>$(Encode-Html $result.Layer)</td><td>$(Encode-Html $result.Check)</td><td><span class='$(Get-StatusClass $result.Status)'>$(Encode-Html $result.Status)</span></td><td>$(Convert-InlineMarkdownToHtml $result.Message)</td></tr>"
+            "<tr><td>$(Encode-Html $result.Layer)</td><td>$(Encode-Html $result.Check)</td><td><span class='$(Get-StatusClass $result.Status)'>$(Encode-Html $result.Status)</span></td><td>$(Convert-InlineCodeToHtml $result.Message)</td></tr>"
         }
     } else {
         "<tr><td colspan='4'>No failures found.</td></tr>"
@@ -1145,7 +1348,7 @@ if (-not [string]::IsNullOrWhiteSpace($ExportHtml)) {
 
     $warningRows = if ($reportWarnings.Count -gt 0) {
         foreach ($result in $reportWarnings) {
-            "<tr><td>$(Encode-Html $result.Layer)</td><td>$(Encode-Html $result.Check)</td><td><span class='$(Get-StatusClass $result.Status)'>$(Encode-Html $result.Status)</span></td><td>$(Convert-InlineMarkdownToHtml $result.Message)</td></tr>"
+            "<tr><td>$(Encode-Html $result.Layer)</td><td>$(Encode-Html $result.Check)</td><td><span class='$(Get-StatusClass $result.Status)'>$(Encode-Html $result.Status)</span></td><td>$(Convert-InlineCodeToHtml $result.Message)</td></tr>"
         }
     } else {
         "<tr><td colspan='4'>No warnings found.</td></tr>"
@@ -1153,7 +1356,7 @@ if (-not [string]::IsNullOrWhiteSpace($ExportHtml)) {
 
     $layerSections = foreach ($group in ($allResults | Group-Object Layer)) {
         $rows = foreach ($result in $group.Group) {
-            "<tr><td>$(Encode-Html $result.Check)</td><td><span class='$(Get-StatusClass $result.Status)'>$(Encode-Html $result.Status)</span></td><td>$(Convert-InlineMarkdownToHtml $result.Message)</td></tr>"
+            "<tr><td>$(Encode-Html $result.Check)</td><td><span class='$(Get-StatusClass $result.Status)'>$(Encode-Html $result.Status)</span></td><td>$(Convert-InlineCodeToHtml $result.Message)</td></tr>"
         }
 @"
 <section class='panel'>

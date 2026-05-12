@@ -106,32 +106,37 @@ tr:last-child td { border-bottom: 0; }
     </div>
     <div class='panel'>
       <h2>Target</h2>
-      <table class='meta-table'><tbody><tr><th>Namespace</th><td><code>default</code></td></tr>
+      <table class='meta-table'><tbody><tr><th>Namespace</th><td><code>knc-sample-export</code></td></tr>
 <tr><th>Service</th><td><code>wrong-port</code></td></tr>
 <tr><th>Deployment</th><td><code>wrong-port</code></td></tr>
-<tr><th>Timestamp</th><td><code>2026-05-11T17:06:42.2775970-05:00</code></td></tr>
-<tr><th>KubeCommand</th><td><code>kc</code></td></tr>
+<tr><th>Timestamp</th><td><code>2026-05-12T17:01:49.6205634-05:00</code></td></tr>
+<tr><th>KubeCommand</th><td><code>kubectl</code></td></tr>
 <tr><th>DebugImage</th><td><code>nicolaka/netshoot:latest</code></td></tr>
-<tr><th>Scheme</th><td><code>http</code></td></tr>
+<tr><th>DebugPodName</th><td><code>net-test</code></td></tr>
+<tr><th>UrlScheme</th><td><code>http</code></td></tr>
 <tr><th>Path</th><td><code>/</code></td></tr>
-<tr><th>ExpectedPort</th><td><code>0</code></td></tr></tbody></table>
+<tr><th>ServicePort</th><td><code>0</code></td></tr>
+<tr><th>TestPodDns</th><td><code>False</code></td></tr>
+<tr><th>DnsPodName</th><td><code></code></td></tr>
+<tr><th>DnsContainer</th><td><code></code></td></tr>
+<tr><th>PodDnsExecPod</th><td><code></code></td></tr></tbody></table>
     </div>
   </section>
 
   <section class='panel'>
     <h2>Status Summary</h2>
     <div class='stats'><div class='stat stat-fail'><span>FAIL</span><strong>3</strong></div>
-<div class='stat stat-info'><span>INFO</span><strong>3</strong></div>
+<div class='stat stat-info'><span>INFO</span><strong>4</strong></div>
 <div class='stat stat-pass'><span>PASS</span><strong>14</strong></div>
-<div class='stat stat-skip'><span>SKIP</span><strong>3</strong></div>
+<div class='stat stat-skip'><span>SKIP</span><strong>4</strong></div>
 <div class='stat stat-warn'><span>WARN</span><strong>1</strong></div></div>
   </section>
 
   <section class='panel'>
     <h2>Failures</h2>
     <table><thead><tr><th>Layer</th><th>Check</th><th>Status</th><th>Message</th></tr></thead><tbody><tr><td>Pod-to-Service Networking Layer</td><td>service short name</td><td><span class='status status-fail'>FAIL</span></td><td>http://wrong-port:80/ failed from debug pod. This may be DNS, TCP, NetworkPolicy, service routing, or app listener.</td></tr>
-<tr><td>Pod-to-Service Networking Layer</td><td>service FQDN</td><td><span class='status status-fail'>FAIL</span></td><td>http://wrong-port.default.svc.cluster.local:80/ failed from debug pod. This may be DNS, TCP, NetworkPolicy, service routing, or app listener.</td></tr>
-<tr><td>Pod-to-Service Networking Layer</td><td>ClusterIP</td><td><span class='status status-fail'>FAIL</span></td><td>http://10.96.65.4:80/ failed from debug pod. This may be DNS, TCP, NetworkPolicy, service routing, or app listener.</td></tr></tbody></table>
+<tr><td>Pod-to-Service Networking Layer</td><td>service FQDN</td><td><span class='status status-fail'>FAIL</span></td><td>http://wrong-port.knc-sample-export.svc.cluster.local:80/ failed from debug pod. This may be DNS, TCP, NetworkPolicy, service routing, or app listener.</td></tr>
+<tr><td>Pod-to-Service Networking Layer</td><td>ClusterIP</td><td><span class='status status-fail'>FAIL</span></td><td>http://10.96.244.140:80/ failed from debug pod. This may be DNS, TCP, NetworkPolicy, service routing, or app listener.</td></tr></tbody></table>
   </section>
 
   <section class='panel'>
@@ -144,8 +149,8 @@ tr:last-child td { border-bottom: 0; }
   <h3>Cluster Access</h3>
   <table>
     <thead><tr><th>Check</th><th>Status</th><th>Message</th></tr></thead>
-    <tbody><tr><td>kubectl</td><td><span class='status status-pass'>PASS</span></td><td>kc is available.</td></tr>
-<tr><td>namespace</td><td><span class='status status-pass'>PASS</span></td><td>Namespace &#39;default&#39; exists.</td></tr></tbody>
+    <tbody><tr><td>kubectl</td><td><span class='status status-pass'>PASS</span></td><td>kubectl is available.</td></tr>
+<tr><td>namespace</td><td><span class='status status-pass'>PASS</span></td><td>Namespace &#39;knc-sample-export&#39; exists.</td></tr></tbody>
   </table>
 </section>
 <section class='panel'>
@@ -167,11 +172,19 @@ tr:last-child td { border-bottom: 0; }
   </table>
 </section>
 <section class='panel'>
+  <h3>Pod-Specific DNS Layer</h3>
+  <table>
+    <thead><tr><th>Check</th><th>Status</th><th>Message</th></tr></thead>
+    <tbody><tr><td>wrong-port-7d79745bbd-kcmxb dns spec</td><td><span class='status status-info'>INFO</span></td><td>dnsPolicy=ClusterFirst; hostNetwork=False; nameservers=(none); searches=(none); options=(none)</td></tr>
+<tr><td>pod dns exec</td><td><span class='status status-skip'>SKIP</span></td><td>Skipped. Add -TestPodDns to exec into a selected pod and test /etc/resolv.conf, nslookup, and getent.</td></tr></tbody>
+  </table>
+</section>
+<section class='panel'>
   <h3>Service Layer</h3>
   <table>
     <thead><tr><th>Check</th><th>Status</th><th>Message</th></tr></thead>
     <tbody><tr><td>service exists</td><td><span class='status status-pass'>PASS</span></td><td>Service &#39;wrong-port&#39; exists.</td></tr>
-<tr><td>service details</td><td><span class='status status-info'>INFO</span></td><td>Type=ClusterIP; ClusterIP=10.96.65.4; Ports=80-&gt;9999/TCP; Selector=app=wrong-port</td></tr>
+<tr><td>service details</td><td><span class='status status-info'>INFO</span></td><td>Type=ClusterIP; ClusterIP=10.96.244.140; Ports=80-&gt;9999/TCP; Selector=app=wrong-port</td></tr>
 <tr><td>selected port</td><td><span class='status status-info'>INFO</span></td><td>Testing service port 80 with targetPort 9999.</td></tr>
 <tr><td>targetPort metadata</td><td><span class='status status-warn'>WARN</span></td><td>Selected pods do not declare container ports. Kubernetes allows this, but the script cannot compare targetPort metadata.</td></tr></tbody>
   </table>
@@ -180,7 +193,7 @@ tr:last-child td { border-bottom: 0; }
   <h3>Endpoint Mapping Layer</h3>
   <table>
     <thead><tr><th>Check</th><th>Status</th><th>Message</th></tr></thead>
-    <tbody><tr><td>endpoint slices</td><td><span class='status status-pass'>PASS</span></td><td>Ready endpoint IPs: 10.244.2.2</td></tr>
+    <tbody><tr><td>endpoint slices</td><td><span class='status status-pass'>PASS</span></td><td>Ready endpoint IPs: 10.244.3.8</td></tr>
 <tr><td>pod to endpoint match</td><td><span class='status status-pass'>PASS</span></td><td>Selected pod IPs appear in ready EndpointSlices.</td></tr></tbody>
   </table>
 </section>
@@ -196,7 +209,7 @@ tr:last-child td { border-bottom: 0; }
   <table>
     <thead><tr><th>Check</th><th>Status</th><th>Message</th></tr></thead>
     <tbody><tr><td>resolve wrong-port</td><td><span class='status status-pass'>PASS</span></td><td>Debug pod resolved &#39;wrong-port&#39;.</td></tr>
-<tr><td>resolve wrong-port.default.svc.cluster.local</td><td><span class='status status-pass'>PASS</span></td><td>Debug pod resolved &#39;wrong-port.default.svc.cluster.local&#39;.</td></tr></tbody>
+<tr><td>resolve wrong-port.knc-sample-export.svc.cluster.local</td><td><span class='status status-pass'>PASS</span></td><td>Debug pod resolved &#39;wrong-port.knc-sample-export.svc.cluster.local&#39;.</td></tr></tbody>
   </table>
 </section>
 <section class='panel'>
@@ -204,15 +217,15 @@ tr:last-child td { border-bottom: 0; }
   <table>
     <thead><tr><th>Check</th><th>Status</th><th>Message</th></tr></thead>
     <tbody><tr><td>service short name</td><td><span class='status status-fail'>FAIL</span></td><td>http://wrong-port:80/ failed from debug pod. This may be DNS, TCP, NetworkPolicy, service routing, or app listener.</td></tr>
-<tr><td>service FQDN</td><td><span class='status status-fail'>FAIL</span></td><td>http://wrong-port.default.svc.cluster.local:80/ failed from debug pod. This may be DNS, TCP, NetworkPolicy, service routing, or app listener.</td></tr>
-<tr><td>ClusterIP</td><td><span class='status status-fail'>FAIL</span></td><td>http://10.96.65.4:80/ failed from debug pod. This may be DNS, TCP, NetworkPolicy, service routing, or app listener.</td></tr></tbody>
+<tr><td>service FQDN</td><td><span class='status status-fail'>FAIL</span></td><td>http://wrong-port.knc-sample-export.svc.cluster.local:80/ failed from debug pod. This may be DNS, TCP, NetworkPolicy, service routing, or app listener.</td></tr>
+<tr><td>ClusterIP</td><td><span class='status status-fail'>FAIL</span></td><td>http://10.96.244.140:80/ failed from debug pod. This may be DNS, TCP, NetworkPolicy, service routing, or app listener.</td></tr></tbody>
   </table>
 </section>
 <section class='panel'>
   <h3>Pod-to-Pod Networking Layer</h3>
   <table>
     <thead><tr><th>Check</th><th>Status</th><th>Message</th></tr></thead>
-    <tbody><tr><td>curl 10.244.2.2</td><td><span class='status status-pass'>PASS</span></td><td>http://10.244.2.2:80/ reachable from debug pod. HTTP status: 200</td></tr></tbody>
+    <tbody><tr><td>curl 10.244.3.8</td><td><span class='status status-pass'>PASS</span></td><td>http://10.244.3.8:80/ reachable from debug pod. HTTP status: 200</td></tr></tbody>
   </table>
 </section>
 <section class='panel'>

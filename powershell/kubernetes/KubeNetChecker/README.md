@@ -9,6 +9,7 @@ It walks a service path layer by layer and tries to identify the likely failure 
 - Kubernetes API and namespace access
 - deployment availability
 - pod phase, readiness, and common container failure states
+- pod-specific DNS settings: `dnsPolicy`, `dnsConfig`, and `hostNetwork`
 - service type, selector, port, and `targetPort`
 - EndpointSlice population
 - DNS resolution from inside the cluster
@@ -17,6 +18,7 @@ It walks a service path layer by layer and tries to identify the likely failure 
 - NodePort reachability from inside the cluster
 - host-to-NodePort reachability
 - optional `kubectl port-forward`
+- optional exec-based DNS checks inside a selected workload pod
 
 ## Screenshots
 
@@ -43,7 +45,6 @@ It walks a service path layer by layer and tries to identify the likely failure 
 Sample exports from a deliberately broken `wrong-port` service are included:
 
 - [HTML report](./sample-exports/wrong-port.html)
-- [Markdown report](./sample-exports/wrong-port.md)
 - [JSON report](./sample-exports/wrong-port.json)
 
 GitHub displays HTML files as source. To view the rendered HTML report, download/open it locally in a browser.
@@ -61,6 +62,7 @@ Cluster permissions:
 - read namespaces, deployments, pods, services, EndpointSlices, and nodes
 - create/delete a temporary debug pod for DNS/curl checks
 - exec into the temporary debug pod
+- optional exec into a selected workload pod when `-TestPodDns` is used
 
 The script uses `kubectl` by default. Use `-KubeCommand` if you prefer a wrapper such as `kc`, `kubecolor`, `oc`, or a full executable path.
 
@@ -75,7 +77,7 @@ Defaults:
 ```powershell
 -Namespace default
 -ServiceName nginx
--Scheme http
+-UrlScheme http
 -Path /
 ```
 
@@ -100,31 +102,49 @@ Check a specific service port/path:
 .\KubeNetChecker.ps1 `
   -ServiceName my-api `
   -Namespace apps `
-  -ExpectedPort 8080 `
+  -ServicePort 8080 `
   -Path /health
 ```
 
 ## Parameters
+
+### Target
 
 | Parameter | Default | Description |
 |---|---:|---|
 | `-Namespace` | `default` | Namespace to test. |
 | `-DeploymentName` | empty | Deployment to check. If omitted, the script tries the service name. |
 | `-ServiceName` | `nginx` | Service to troubleshoot. |
-| `-ExpectedPort` | `0` | Service port clients should hit. If omitted, the first service port is used. |
-| `-Scheme` | `http` | URL scheme for curl tests, usually `http` or `https`. |
+| `-ServicePort` | `0` | Service port clients should hit. If omitted, the first service port is used. |
+| `-UrlScheme` | `http` | URL scheme for curl tests, usually `http` or `https`. |
 | `-Path` | `/` | HTTP path to test. |
 | `-PodSelector` | empty | Optional pod label selector. |
+
+### Debug Pod
+
+| Parameter | Default | Description |
+|---|---:|---|
 | `-DebugImage` | `nicolaka/netshoot:latest` | Debug pod image. Can be an internal registry image. |
-| `-TestPodName` | `net-test` | Temporary debug pod name. |
+| `-DebugPodName` | `net-test` | Temporary debug pod name. |
+| `-SkipDebugPod` | false | Skip checks that require a temporary pod. |
+
+### Optional Tests
+
+| Parameter | Default | Description |
+|---|---:|---|
 | `-TimeoutSec` | `5` | Timeout for curl/local HTTP checks. |
 | `-KubeCommand` | `kubectl` | Override command name/path, such as `kc`, `kubecolor`, `oc`, or a full path. |
-| `-SkipDebugPod` | false | Skip checks that require a temporary pod. |
 | `-SkipNodePort` | false | Skip NodePort and host-to-NodePort tests. |
-| `-SkipPortForward` | false | Skip optional port-forward logic. |
 | `-TestPortForward` | false | Run optional port-forward validation. |
+| `-TestPodDns` | false | Exec into a selected workload pod to read `/etc/resolv.conf` and run available DNS tools against the service FQDN and short service name. |
+| `-DnsPodName` | empty | Optional workload pod name for `-TestPodDns`. If omitted, the script picks a ready selected pod. |
+| `-DnsContainer` | empty | Optional container name for `-TestPodDns` exec checks. |
+
+### Output
+
+| Parameter | Default | Description |
+|---|---:|---|
 | `-ExportJson` | empty | Write a JSON report. |
-| `-ExportMarkdown` | empty | Write a Markdown report. |
 | `-ExportHtml` | empty | Write a dark themed HTML report. |
 | `-Verbose` | false | Show underlying kubectl commands. |
 
@@ -146,8 +166,7 @@ Run a safer read-mostly pass:
   -ServiceName my-service `
   -Namespace prod `
   -SkipDebugPod `
-  -SkipNodePort `
-  -SkipPortForward
+  -SkipNodePort
 ```
 
 Test HTTPS:
@@ -156,8 +175,8 @@ Test HTTPS:
 .\KubeNetChecker.ps1 `
   -ServiceName secure-api `
   -Namespace apps `
-  -Scheme https `
-  -ExpectedPort 443 `
+  -UrlScheme https `
+  -ServicePort 443 `
   -Path /health
 ```
 
@@ -179,6 +198,26 @@ Run port-forward validation:
   -TestPortForward
 ```
 
+Run pod-specific DNS exec checks:
+
+```powershell
+.\KubeNetChecker.ps1 `
+  -ServiceName api `
+  -Namespace apps `
+  -TestPodDns
+```
+
+Run pod-specific DNS exec checks against a named pod/container:
+
+```powershell
+.\KubeNetChecker.ps1 `
+  -ServiceName api `
+  -Namespace apps `
+  -TestPodDns `
+  -DnsPodName api-7f8d9c4d5b-x2p6q `
+  -DnsContainer api
+```
+
 Export reports:
 
 ```powershell
@@ -186,7 +225,6 @@ Export reports:
   -ServiceName api `
   -Namespace apps `
   -ExportJson .\api-net-check.json `
-  -ExportMarkdown .\api-net-check.md `
   -ExportHtml .\api-net-check.html
 ```
 
@@ -247,6 +285,8 @@ If an early layer fails, later network checks may be skipped to avoid noisy fals
 
 - The debug pod is temporary and is removed at the end.
 - Some production clusters may block debug pods, `exec`, public image pulls, node reads, or port-forwarding.
+- Pod-specific DNS metadata inspection is read-only. Exec checks inside workload pods run only when `-TestPodDns` is supplied.
+- If the selected workload container does not include `nslookup` or `getent`, those individual checks are skipped.
 - Container ports are metadata. A `targetPort` metadata mismatch is a warning unless curl behavior also confirms it.
 - NetworkPolicy, Ingress, MTU, route-table, and CNI-specific checks are not currently deep-scanned.
 

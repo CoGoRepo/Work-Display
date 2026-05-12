@@ -9,7 +9,7 @@ This repo is part portfolio, part toolbox. Some items are polished enough to use
 | Project | What It Does | Start Here |
 |---|---|---|
 | **ATO-Matic v1** | Docker-based local STIG vulnerability and POA&M tracker with seeded PostgreSQL data. | [projects/ato-matic-v1](./projects/ato-matic-v1) |
-| **KubeNetChecker** | PowerShell Kubernetes network troubleshooting tool with layered diagnosis and JSON/Markdown/HTML reports. | [powershell/kubernetes/KubeNetChecker](./powershell/kubernetes/KubeNetChecker) |
+| **KubeNetChecker** | PowerShell Kubernetes network troubleshooting tool with layered diagnosis and JSON/HTML reports. | [powershell/kubernetes/KubeNetChecker](./powershell/kubernetes/KubeNetChecker) |
 | **Preload External MFA** | Microsoft Graph / Entra ID automation for preloading external authentication methods during migration work. | [powershell/azure](./powershell/azure) |
 
 ## Screenshots
