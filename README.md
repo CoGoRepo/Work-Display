@@ -44,23 +44,6 @@ Additional report screenshots:
 
 </details>
 
-<details>
-<summary>Preload External MFA screenshots</summary>
-
-Add screenshots under:
-
-```text
-assets/screenshots/azure/
-```
-
-Suggested captures:
-
-- sanitized CSV/template view
-- sanitized run output
-- Graph permission notes
-
-</details>
-
 ## Repository Map
 
 ```text
