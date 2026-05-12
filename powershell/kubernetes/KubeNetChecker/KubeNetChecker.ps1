@@ -110,7 +110,7 @@ function Invoke-Kube {
         [switch]$AllowFailure
     )
 
-    Write-Verbose ("kc {0}" -f ($Arguments -join " "))
+    Write-Verbose ("$script:Kubectl {0}" -f ($Arguments -join " "))
 
     $stderrFile = [System.IO.Path]::GetTempFileName()
     $previousErrorActionPreference = $ErrorActionPreference
@@ -165,15 +165,11 @@ function Resolve-KubeCommand {
         return $PreferredCommand
     }
 
-    if (Get-Command kc -ErrorAction SilentlyContinue) {
-        return "kc"
-    }
-
     if (Get-Command kubectl -ErrorAction SilentlyContinue) {
         return "kubectl"
     }
 
-    throw "Could not find 'kc' or 'kubectl' in PATH. Pass -KubeCommand if you use a different wrapper."
+    throw "Could not find 'kubectl' in PATH. Pass -KubeCommand if you use a wrapper or full kubectl path."
 }
 
 function Join-LabelSelector {
