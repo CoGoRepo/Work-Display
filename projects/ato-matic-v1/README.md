@@ -4,6 +4,51 @@ Docker-based deployment bundle for ATO-Matic, a local web app for working with S
 
 This bundle is meant to let someone spin up a local instance with Docker Compose.
 
+## Screenshots
+
+<details>
+<summary>Dashboard</summary>
+
+![ATO-Matic dashboard](../../assets/screenshots/ato-matic/dashboard.png)
+
+</details>
+
+<details>
+<summary>Vulnerability Management</summary>
+
+![ATO-Matic vulnerability details](../../assets/screenshots/ato-matic/vuln-MoreDetails.png)
+
+![ATO-Matic vulnerabilities by AOR](../../assets/screenshots/ato-matic/vuln-aor.png)
+
+</details>
+
+<details>
+<summary>Assets</summary>
+
+![ATO-Matic assets](../../assets/screenshots/ato-matic/assets.png)
+
+</details>
+
+<details>
+<summary>POA&M Management</summary>
+
+![ATO-Matic POA&M status](../../assets/screenshots/ato-matic/poam-status.png)
+
+![ATO-Matic POA&M preview](../../assets/screenshots/ato-matic/poam-preview.png)
+
+</details>
+
+<details>
+<summary>Administration</summary>
+
+![ATO-Matic admin config](../../assets/screenshots/ato-matic/admin-config.png)
+
+![ATO-Matic admin assets](../../assets/screenshots/ato-matic/admin-assets.png)
+
+![ATO-Matic admin users](../../assets/screenshots/ato-matic/admin-users.png)
+
+</details>
+
 ## Includes
 
 - `docker-compose.yml` for the app and PostgreSQL database

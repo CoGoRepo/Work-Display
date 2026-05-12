@@ -19,18 +19,13 @@ Screenshots are intentionally collapsed so the main page stays readable.
 <details>
 <summary>ATO-Matic screenshots</summary>
 
-Add screenshots under:
+The dashboard is the best quick visual summary of the app: findings, severity, assets, AORs, and exposure at a glance.
 
-```text
-assets/screenshots/ato-matic/
-```
+![ATO-Matic dashboard](./assets/screenshots/ato-matic/dashboard.png)
 
-Suggested captures:
+Additional screenshots are included in the [ATO-Matic project README](./projects/ato-matic-v1).
 
-- dashboard
-- assets page
-- POA&M page
-- admin/config page
+</details>
 
 </details>
 
