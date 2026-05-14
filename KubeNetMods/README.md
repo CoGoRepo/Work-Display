@@ -2,25 +2,28 @@
 
 KubeNetMods is an experimental PowerShell module for Kubernetes network and network-adjacent troubleshooting.
 
-Its first public command is:
+It starts with a target Kubernetes Service and works outward through the path around it: cluster access, nodes, DNS, Service, EndpointSlice, pods, NetworkPolicy, Ingress, NodePort, LoadBalancer, source-to-target reachability, pod-side MTU/route snapshots, and recent events.
 
-```powershell
-Test-KubeNetService
-```
-
-The command starts with one target Kubernetes Service and walks the path around it: cluster access, nodes, DNS, Service, EndpointSlice, pods, NetworkPolicy, Ingress, NodePort, LoadBalancer, source-to-target reachability, pod-side MTU/route snapshots, and recent events.
-
-The goal is not to replace observability platforms. The goal is to give an engineer a structured answer to:
+The goal is simple:
 
 ```text
 Is this actually a Kubernetes networking problem, and where should I look first?
 ```
 
+## Commands
+
+| Command | Purpose |
+|---|---|
+| `Test-KubeNetService` | Main diagnostic command for a Kubernetes Service/network path. |
+| `ConvertTo-KubeNetAlert` | Normalize alert JSON into a provider-neutral KubeNet alert object. |
+| `ConvertTo-KubeNetServiceParameters` | Convert a normalized alert into a visible `Test-KubeNetService` parameter plan. |
+| `Invoke-KubeNetAlertTriage` | Normalize, classify, plan, and optionally run KubeNet diagnostics from an alert payload. |
+
 ## Current Status
 
 This is a prototype module. It is usable for real troubleshooting, but some checks are intentionally heuristic.
 
-Report statuses mean:
+Report statuses:
 
 | Status | Meaning |
 |---|---|
@@ -30,67 +33,26 @@ Report statuses mean:
 | `SKIP` | The check did not apply or was disabled. |
 | `INFO` | Context collected for the report. |
 
-The `Diagnosis` section is filtered to avoid blaming downstream symptoms when a clearer upstream issue exists.
+The `Diagnosis` section is filtered so downstream symptoms do not drown out the clearest likely cause.
 
 ## What It Can Do
 
-Core Kubernetes checks:
-
-- verify `kubectl` access and namespace existence
-- inspect node readiness and common node pressure/network conditions
-- inspect kube-system CNI, CoreDNS, and kube-proxy pod health
-- inspect CoreDNS service IP and Corefile basics
-- inspect Service type, ClusterIP, selector, ports, and `targetPort`
-- inspect selected pod health, readiness, image pull/crash states, and declared ports
-- inspect EndpointSlice ready addresses and endpoint ports
-- surface recent warning events
-
-Runtime path checks:
-
-- test DNS and HTTP from temporary debug pods
-- test from a real source workload pod by name or label selector
-- test cross-namespace service FQDNs such as `postgres.database.svc.cluster.local`
-- test direct pod-IP reachability to separate pod/app issues from Service routing issues
-- test NodePort from inside the cluster and from the local host
-- optionally test `kubectl port-forward`
-
-DNS and policy checks:
-
-- inspect source and target pod DNS settings
-- read pod `/etc/resolv.conf` when exec is available
-- detect common `dnsPolicy`, `dnsConfig`, and `hostNetwork` gotchas
-- analyze source egress NetworkPolicies for the selected path
-- analyze target ingress NetworkPolicies for the selected path
-- analyze DNS egress policies, including NodeLocalDNS/link-local resolver cases
-- warn when NetworkPolicy objects exist but the detected CNI may not enforce them
-
-Ingress, LoadBalancer, and external checks:
-
-- find Ingress objects pointing at the target Service
-- validate Ingress backend service port/name references
-- check Ingress TLS secret existence
-- check IngressClass existence
-- inspect visible ingress/controller pod readiness hints
-- optionally test explicit Ingress URLs from the local host
-- inspect LoadBalancer service addresses and provider hints
-- optionally test explicit external URLs
-
-Snapshot checks:
-
-- collect pod-side interface MTUs with `ip -o link show`
-- collect pod-side routes with `ip route show`
-- compare source and target pod `eth0` MTU values when both are available
-
-Alert payload helpers:
-
-- normalize alert payloads from Alertmanager, Grafana, Datadog, New Relic, or generic JSON
-- classify whether an alert looks relevant to KubeNet's network-focused checks
-- produce a visible parameter plan before running `Test-KubeNetService`
-- skip out-of-scope alerts by default instead of pretending every alert is a network problem
+| Area | Checks |
+|---|---|
+| Cluster access | `kubectl` access, namespace existence, node readiness, common node pressure/network conditions. |
+| Core networking | CNI/CoreDNS/kube-proxy pod health, CoreDNS service IP, Corefile basics. |
+| Service path | Service type, ClusterIP, selector, ports, `targetPort`, selected pod health, EndpointSlice readiness. |
+| Runtime reachability | DNS and HTTP from debug pods, source workload pods, direct pod IP, Service FQDN, NodePort, optional port-forward. |
+| DNS | Pod DNS settings, `/etc/resolv.conf`, `dnsPolicy`, `dnsConfig`, `hostNetwork`, NodeLocalDNS/link-local resolver cases. |
+| NetworkPolicy | Source egress, target ingress, DNS egress, and CNI enforcement hints. |
+| Ingress | Ingress routes to the Service, backend port/name, TLS secret, IngressClass, controller pod hints, optional URL tests. |
+| LoadBalancer/external | LoadBalancer addresses, provider hints, optional explicit external URL tests. |
+| Snapshots | Pod-side MTU and route snapshots, plus source/target `eth0` MTU comparison when available. |
+| Alerts | Best-effort alert normalization, scope classification, parameter planning, and optional triage run. |
 
 ## What It Cannot Do Yet
 
-- It does not inspect Gateway API resources yet.
+- It does not inspect Gateway API resources.
 - It does not deeply understand service mesh config such as Istio, Linkerd, or Consul.
 - It does not run provider-specific CNI dataplane commands.
 - It does not deeply inspect kube-proxy iptables, IPVS, or eBPF state.
@@ -99,14 +61,14 @@ Alert payload helpers:
 - It does not call AWS, Azure, or GCP APIs.
 - It does not prove country/region edge-provider outages unless they appear through explicit external URL tests.
 - It does not validate application auth or business logic. HTTP checks focus on reachability.
-- NetworkPolicy analysis is heuristic. Complex selectors or advanced CNI-specific behavior may still need human review.
-- Alert payload normalization is best-effort. Alert platforms and teams use different label names, so some payloads may need better labels or a manual parameter override.
+- NetworkPolicy analysis is heuristic. Complex selectors or CNI-specific behavior may still need human review.
+- Alert normalization is best-effort because alert platforms and teams use different label/tag names.
 
 ## Safety
 
 The module is mostly read-only, but some checks create temporary debug pods or run `kubectl exec`.
 
-Temporary debug pods are cleaned up automatically. If a run is interrupted, clean them up with:
+Temporary debug pods are cleaned up automatically. If a run is interrupted:
 
 ```powershell
 kubectl delete pod kubenetmods-debug -n <namespace> --ignore-not-found
@@ -185,7 +147,7 @@ Import the module from the module directory:
 Import-Module .\KubeNetMods.psd1 -Force
 ```
 
-Check a Service in one namespace:
+Check a Service:
 
 ```powershell
 Test-KubeNetService `
@@ -193,16 +155,7 @@ Test-KubeNetService `
   -ServiceName nginx
 ```
 
-Save an HTML report:
-
-```powershell
-Test-KubeNetService `
-  -Namespace apps `
-  -ServiceName api `
-  -ExportHtml .\api-net.html
-```
-
-Save HTML and JSON:
+Save HTML and JSON reports:
 
 ```powershell
 Test-KubeNetService `
@@ -224,10 +177,10 @@ Test-KubeNetService `
 
 ## Alert Payload Triage
 
-The alert helpers keep alert handling separate from the main diagnostic command:
+Alert handling is intentionally separate from the main diagnostic command:
 
 ```text
-raw alert JSON -> normalized alert -> scope/classification -> parameter plan -> optional run
+raw alert JSON -> normalized alert -> scope classification -> parameter plan -> optional run
 ```
 
 Normalize an alert:
@@ -238,7 +191,7 @@ ConvertTo-KubeNetAlert `
   -Path .\examples\alerts\grafana-ingress-backend.json
 ```
 
-Preview what would be passed to `Test-KubeNetService`:
+Preview the inferred parameters:
 
 ```powershell
 ConvertTo-KubeNetServiceParameters `
@@ -246,7 +199,7 @@ ConvertTo-KubeNetServiceParameters `
   -Path .\examples\alerts\alertmanager-dns-timeout.json
 ```
 
-Run only if the alert is in scope and has enough metadata:
+Run triage only when the alert is in scope and has enough metadata:
 
 ```powershell
 Invoke-KubeNetAlertTriage `
@@ -255,7 +208,7 @@ Invoke-KubeNetAlertTriage `
   -ExportHtml .\alert-triage.html
 ```
 
-Preview without running:
+Preview an out-of-scope alert:
 
 ```powershell
 Invoke-KubeNetAlertTriage `
@@ -264,13 +217,11 @@ Invoke-KubeNetAlertTriage `
   -PreviewOnly
 ```
 
-The triage wrapper will not run by default when the alert is out of scope or missing the target `Namespace`/`ServiceName`. Use `-Force` only when you intentionally want to run with the inferred parameters anyway.
+The triage wrapper will not run by default when an alert is out of scope or missing the target `Namespace`/`ServiceName`. Use `-Force` only when you intentionally want to run with the inferred parameters anyway.
 
 ## Common Examples
 
 ### Cross-Namespace Service Path
-
-Use `-SourceNamespace` when an app in one namespace must reach a Service in another namespace.
 
 ```powershell
 Test-KubeNetService `
@@ -280,7 +231,7 @@ Test-KubeNetService `
   -ServicePort 5432
 ```
 
-The module tests the target Service and source-side DNS/reachability against:
+This tests the target Service and source-side DNS/reachability against:
 
 ```text
 postgres.database.svc.cluster.local
@@ -288,7 +239,7 @@ postgres.database.svc.cluster.local
 
 ### Test From The Real Source Pod
 
-A temporary debug pod may not have the same labels, DNS policy, sidecars, service account, or NetworkPolicies as the real app. Use a source pod when that matters.
+Use a real source pod when labels, DNS policy, sidecars, service accounts, or NetworkPolicies may differ from a generic debug pod.
 
 ```powershell
 Test-KubeNetService `
@@ -299,7 +250,7 @@ Test-KubeNetService `
   -ServicePort 5432
 ```
 
-Or target a specific pod/container:
+Specific pod/container:
 
 ```powershell
 Test-KubeNetService `
@@ -313,17 +264,6 @@ Test-KubeNetService `
 
 ### Target Workload DNS
 
-Use `-TestPodDns` to exec into a selected target workload pod and inspect DNS from inside that pod.
-
-```powershell
-Test-KubeNetService `
-  -Namespace apps `
-  -ServiceName api `
-  -TestPodDns
-```
-
-Specific pod/container:
-
 ```powershell
 Test-KubeNetService `
   -Namespace apps `
@@ -335,8 +275,6 @@ Test-KubeNetService `
 
 ### Ingress URL
 
-Static Ingress checks run when Ingress objects point at the target Service. Use `-TestIngress` and `-IngressUrls` to test a real URL from the local host.
-
 ```powershell
 Test-KubeNetService `
   -Namespace apps `
@@ -346,8 +284,6 @@ Test-KubeNetService `
 ```
 
 ### Egress
-
-Use `-TestEgress` to test outbound reachability from the source namespace or source pod.
 
 ```powershell
 Test-KubeNetService `
@@ -367,8 +303,6 @@ Test-KubeNetService `
   -TestLoadBalancer
 ```
 
-You can also test explicit external targets:
-
 ```powershell
 Test-KubeNetService `
   -Namespace apps `
@@ -377,8 +311,6 @@ Test-KubeNetService `
 ```
 
 ### Port-Forward
-
-Use `-TestPortForward` to check whether `kubectl port-forward` can reach the Service from the local host.
 
 ```powershell
 Test-KubeNetService `
@@ -405,33 +337,35 @@ Test-KubeNetService `
 
 ## Reading The Report
 
-The HTML report is meant to be read top-down:
+Read the HTML report from the top down:
 
 1. Start with `Diagnosis`.
 2. Review `Failures`.
 3. Review `Warnings`.
 4. Use the detailed layer table when you need evidence.
 
-Warnings do not always mean something is broken. They mean the configuration is worth looking at.
+Warnings do not always mean something is broken. They mean the configuration is worth reviewing.
 
-Example: if a target ingress policy does not obviously allow the source namespace, but the live curl succeeds, the module keeps that as a warning instead of calling it the root diagnosis.
+## Samples
 
-## Sample Reports
+Sample HTML and JSON reports are in [`examples/reports`](./examples/reports).
 
-Sample HTML and JSON reports are included in [`examples/reports`](./examples/reports).
+| Report | Scenario |
+|---|---|
+| [`cross-namespace-smoke.html`](./examples/reports/cross-namespace-smoke.html) | Healthy cross-namespace service path. |
+| [`dns-policy-nodelocal.html`](./examples/reports/dns-policy-nodelocal.html) | Source pod uses NodeLocalDNS/link-local resolver, but policy only allows CoreDNS pods. |
+| [`target-ingress-policy-block.html`](./examples/reports/target-ingress-policy-block.html) | Static target ingress policy warning while runtime curl passes. |
+| [`ingress-misconfig.html`](./examples/reports/ingress-misconfig.html) | Deterministic Ingress config failures. |
+| [`wrong-targetport-direct-pod.html`](./examples/reports/wrong-targetport-direct-pod.html) | Direct pod IP works, but Service routing fails because `targetPort` is wrong. |
 
-- [`cross-namespace-smoke.html`](./examples/reports/cross-namespace-smoke.html): healthy cross-namespace service path
-- [`dns-policy-nodelocal.html`](./examples/reports/dns-policy-nodelocal.html): source pod uses a NodeLocal/link-local resolver but policy only allows CoreDNS pods
-- [`target-ingress-policy-block.html`](./examples/reports/target-ingress-policy-block.html): static target ingress policy warning, runtime curl passes because local CNI does not enforce policy
-- [`ingress-misconfig.html`](./examples/reports/ingress-misconfig.html): deterministic Ingress config failures
-- [`wrong-targetport-direct-pod.html`](./examples/reports/wrong-targetport-direct-pod.html): direct pod IP works, but Service routing fails because `targetPort` points at the wrong backend port
+Sample alert payloads are in [`examples/alerts`](./examples/alerts).
 
-Sample alert payloads are included in [`examples/alerts`](./examples/alerts).
-
-- [`alertmanager-dns-timeout.json`](./examples/alerts/alertmanager-dns-timeout.json): network-relevant DNS timeout with enough metadata to run
-- [`grafana-ingress-backend.json`](./examples/alerts/grafana-ingress-backend.json): network-relevant Ingress/backend alert
-- [`datadog-http-401.json`](./examples/alerts/datadog-http-401.json): out-of-scope application-auth alert
-- [`generic-missing-service.json`](./examples/alerts/generic-missing-service.json): network-looking alert missing target Service metadata
+| Alert | Scenario |
+|---|---|
+| [`alertmanager-dns-timeout.json`](./examples/alerts/alertmanager-dns-timeout.json) | Network-relevant DNS timeout with enough metadata to run. |
+| [`grafana-ingress-backend.json`](./examples/alerts/grafana-ingress-backend.json) | Network-relevant Ingress/backend alert. |
+| [`datadog-http-401.json`](./examples/alerts/datadog-http-401.json) | Out-of-scope application-auth alert. |
+| [`generic-missing-service.json`](./examples/alerts/generic-missing-service.json) | Network-looking alert missing target Service metadata. |
 
 ## Layout
 
@@ -440,13 +374,11 @@ KubeNetMods/
   KubeNetMods.psd1
   KubeNetMods.psm1
   Public/
-    Test-KubeNetService.ps1
   Private/
-    KubeNetCore.ps1
   Reports/
-    Export-KubeNetHtml.ps1
   examples/
+    alerts/
     reports/
 ```
 
-The `.psm1` is the module loader. Public commands live in `Public`, helper functions live in `Private`, report exporters live in `Reports`, and example output lives in `examples/reports`.
+The `.psm1` is the module loader. Public commands live in `Public`, helper functions live in `Private`, report exporters live in `Reports`, and example payloads/reports live in `examples`.
