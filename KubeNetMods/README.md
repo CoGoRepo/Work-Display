@@ -30,7 +30,6 @@ For example, a NetworkPolicy may statically appear to block traffic, but if the 
 KubeNetMods/
   KubeNetMods.psd1
   KubeNetMods.psm1
-  KubeNetChecker.prototype.ps1
   Public/
     Test-KubeNetService.ps1
   Private/
