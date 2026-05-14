@@ -44,7 +44,7 @@ KubeNetMods/
 ## Import
 
 ```powershell
-Import-Module C:\util\work-display\KubeNetMods\KubeNetMods.psd1 -Force
+Import-Module .\KubeNetMods.psd1 -Force
 ```
 
 Use `-Verbose` on the command if you want to see the underlying `kubectl` commands.
@@ -65,7 +65,7 @@ Save an HTML report:
 Test-KubeNetService `
   -Namespace apps `
   -ServiceName api `
-  -ExportHtml C:\util\api-net.html
+  -ExportHtml .\api-net.html
 ```
 
 Save HTML and JSON:
@@ -74,8 +74,8 @@ Save HTML and JSON:
 Test-KubeNetService `
   -Namespace apps `
   -ServiceName api `
-  -ExportHtml C:\util\api-net.html `
-  -ExportJson C:\util\api-net.json
+  -ExportHtml .\api-net.html `
+  -ExportJson .\api-net.json
 ```
 
 Run deeper optional checks:
@@ -85,7 +85,7 @@ Test-KubeNetService `
   -Namespace apps `
   -ServiceName api `
   -Deep `
-  -ExportHtml C:\util\api-deep.html
+  -ExportHtml .\api-deep.html
 ```
 
 `-Deep` currently enables workload DNS checks, egress checks, Ingress checks, and LoadBalancer checks.
@@ -405,19 +405,15 @@ Test-KubeNetService `
 
 ## Sample Reports
 
-Local test reports from development runs are currently saved in:
-
-```text
-C:\util\KubeNetMods-TestReports
-```
+Sample HTML and JSON reports are included in [`examples/reports`](./examples/reports).
 
 Useful examples:
 
-- `cross-namespace-smoke.html`: healthy cross-namespace service path
-- `dns-policy-nodelocal.html`: source pod uses a NodeLocal/link-local resolver but policy only allows CoreDNS pods
-- `target-ingress-policy-block.html`: static target ingress policy warning, runtime curl passes because local CNI does not enforce policy
-- `ingress-misconfig.html`: deterministic Ingress config failures
-- `wrong-targetport-direct-pod.html`: direct pod IP works, but Service routing fails because `targetPort` points at the wrong backend port
+- [`cross-namespace-smoke.html`](./examples/reports/cross-namespace-smoke.html): healthy cross-namespace service path
+- [`dns-policy-nodelocal.html`](./examples/reports/dns-policy-nodelocal.html): source pod uses a NodeLocal/link-local resolver but policy only allows CoreDNS pods
+- [`target-ingress-policy-block.html`](./examples/reports/target-ingress-policy-block.html): static target ingress policy warning, runtime curl passes because local CNI does not enforce policy
+- [`ingress-misconfig.html`](./examples/reports/ingress-misconfig.html): deterministic Ingress config failures
+- [`wrong-targetport-direct-pod.html`](./examples/reports/wrong-targetport-direct-pod.html): direct pod IP works, but Service routing fails because `targetPort` points at the wrong backend port
 
 ## Safety
 
