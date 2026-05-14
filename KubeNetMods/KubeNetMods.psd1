@@ -7,7 +7,12 @@
     Copyright         = '(c) 2026 CoGoRepo. All rights reserved.'
     Description       = 'PowerShell Kubernetes network and network-adjacent troubleshooting module.'
     PowerShellVersion = '5.1'
-    FunctionsToExport = @('Test-KubeNetService')
+    FunctionsToExport = @(
+        'ConvertTo-KubeNetAlert',
+        'ConvertTo-KubeNetServiceParameters',
+        'Invoke-KubeNetAlertTriage',
+        'Test-KubeNetService'
+    )
     CmdletsToExport   = @()
     VariablesToExport = '*'
     AliasesToExport   = @()

@@ -8,4 +8,9 @@ foreach ($folder in @('Private', 'Reports', 'Public')) {
     }
 }
 
-Export-ModuleMember -Function Test-KubeNetService
+Export-ModuleMember -Function @(
+    'ConvertTo-KubeNetAlert',
+    'ConvertTo-KubeNetServiceParameters',
+    'Invoke-KubeNetAlertTriage',
+    'Test-KubeNetService'
+)

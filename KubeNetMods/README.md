@@ -81,6 +81,13 @@ Snapshot checks:
 - collect pod-side routes with `ip route show`
 - compare source and target pod `eth0` MTU values when both are available
 
+Alert payload helpers:
+
+- normalize alert payloads from Alertmanager, Grafana, Datadog, New Relic, or generic JSON
+- classify whether an alert looks relevant to KubeNet's network-focused checks
+- produce a visible parameter plan before running `Test-KubeNetService`
+- skip out-of-scope alerts by default instead of pretending every alert is a network problem
+
 ## What It Cannot Do Yet
 
 - It does not inspect Gateway API resources yet.
@@ -93,6 +100,7 @@ Snapshot checks:
 - It does not prove country/region edge-provider outages unless they appear through explicit external URL tests.
 - It does not validate application auth or business logic. HTTP checks focus on reachability.
 - NetworkPolicy analysis is heuristic. Complex selectors or advanced CNI-specific behavior may still need human review.
+- Alert payload normalization is best-effort. Alert platforms and teams use different label names, so some payloads may need better labels or a manual parameter override.
 
 ## Safety
 
@@ -213,6 +221,50 @@ Test-KubeNetService `
   -Deep `
   -ExportHtml .\api-deep.html
 ```
+
+## Alert Payload Triage
+
+The alert helpers keep alert handling separate from the main diagnostic command:
+
+```text
+raw alert JSON -> normalized alert -> scope/classification -> parameter plan -> optional run
+```
+
+Normalize an alert:
+
+```powershell
+ConvertTo-KubeNetAlert `
+  -Provider Grafana `
+  -Path .\examples\alerts\grafana-ingress-backend.json
+```
+
+Preview what would be passed to `Test-KubeNetService`:
+
+```powershell
+ConvertTo-KubeNetServiceParameters `
+  -Provider Alertmanager `
+  -Path .\examples\alerts\alertmanager-dns-timeout.json
+```
+
+Run only if the alert is in scope and has enough metadata:
+
+```powershell
+Invoke-KubeNetAlertTriage `
+  -Provider Alertmanager `
+  -Path .\examples\alerts\alertmanager-dns-timeout.json `
+  -ExportHtml .\alert-triage.html
+```
+
+Preview without running:
+
+```powershell
+Invoke-KubeNetAlertTriage `
+  -Provider Datadog `
+  -Path .\examples\alerts\datadog-http-401.json `
+  -PreviewOnly
+```
+
+The triage wrapper will not run by default when the alert is out of scope or missing the target `Namespace`/`ServiceName`. Use `-Force` only when you intentionally want to run with the inferred parameters anyway.
 
 ## Common Examples
 
@@ -373,6 +425,13 @@ Sample HTML and JSON reports are included in [`examples/reports`](./examples/rep
 - [`target-ingress-policy-block.html`](./examples/reports/target-ingress-policy-block.html): static target ingress policy warning, runtime curl passes because local CNI does not enforce policy
 - [`ingress-misconfig.html`](./examples/reports/ingress-misconfig.html): deterministic Ingress config failures
 - [`wrong-targetport-direct-pod.html`](./examples/reports/wrong-targetport-direct-pod.html): direct pod IP works, but Service routing fails because `targetPort` points at the wrong backend port
+
+Sample alert payloads are included in [`examples/alerts`](./examples/alerts).
+
+- [`alertmanager-dns-timeout.json`](./examples/alerts/alertmanager-dns-timeout.json): network-relevant DNS timeout with enough metadata to run
+- [`grafana-ingress-backend.json`](./examples/alerts/grafana-ingress-backend.json): network-relevant Ingress/backend alert
+- [`datadog-http-401.json`](./examples/alerts/datadog-http-401.json): out-of-scope application-auth alert
+- [`generic-missing-service.json`](./examples/alerts/generic-missing-service.json): network-looking alert missing target Service metadata
 
 ## Layout
 
