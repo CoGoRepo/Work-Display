@@ -717,18 +717,12 @@ function Test-KubeNetService {
             $targetFqdn = "$ServiceName.$Namespace.svc.cluster.local"
             $targetPort = Get-KubeNetServicePort -Service $service -ServicePort $ServicePort
             $targetUrl = "$UrlScheme`://$targetFqdn`:$targetPort$(Get-KubeNetUrlPath -UrlPath $UrlPath)"
-            $shortDns = Invoke-KubeNetInPod -State $state -Context $sourceContextEffective -Namespace $sourceNamespaceEffective -PodName $sourceExecPodName -Container $sourceExecContainer -Command "nslookup $ServiceName"
             $fqdnDns = Invoke-KubeNetInPod -State $state -Context $sourceContextEffective -Namespace $sourceNamespaceEffective -PodName $sourceExecPodName -Container $sourceExecContainer -Command "nslookup $targetFqdn"
             if ($fqdnDns.ExitCode -eq 0) {
                 Add-KubeNetResult -State $state -Layer 'Cross-Namespace Layer' -Check 'source resolve target FQDN' -Status 'PASS' -Message "Source namespace '$sourceNamespaceEffective' resolved '$targetFqdn'."
             } else {
                 Add-KubeNetResult -State $state -Layer 'Cross-Namespace Layer' -Check 'source resolve target FQDN' -Status 'FAIL' -Message "Source namespace '$sourceNamespaceEffective' could not resolve '$targetFqdn'."
                 Add-KubeNetDiagnosis -State $state -Message "Source namespace '$sourceNamespaceEffective' cannot resolve target service FQDN '$targetFqdn'. Check source pod DNS policy, CoreDNS, and NetworkPolicy allowing DNS egress."
-            }
-            if (-not $sourceIsTarget -and $shortDns.ExitCode -eq 0) {
-                Add-KubeNetResult -State $state -Layer 'Cross-Namespace Layer' -Check 'source short name' -Status 'WARN' -Message "Short name '$ServiceName' resolved from source namespace '$sourceNamespaceEffective'. Confirm this is intended; short names normally resolve inside the source namespace first."
-            } elseif (-not $sourceIsTarget) {
-                Add-KubeNetResult -State $state -Layer 'Cross-Namespace Layer' -Check 'source short name' -Status 'INFO' -Message "Short name '$ServiceName' did not resolve from source namespace '$sourceNamespaceEffective'. Cross-namespace clients should use '$ServiceName.$Namespace' or the FQDN."
             }
             $sourceCurl = Invoke-KubeNetInPod -State $state -Context $sourceContextEffective -Namespace $sourceNamespaceEffective -PodName $sourceExecPodName -Container $sourceExecContainer -Command "curl -k -sS -o /dev/null -w 'HTTP_STATUS=%{http_code}' --connect-timeout $TimeoutSec --max-time $TimeoutSec '$targetUrl'"
             if ($sourceCurl.ExitCode -eq 0) {
