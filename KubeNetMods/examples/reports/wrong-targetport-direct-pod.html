@@ -51,7 +51,7 @@ li + li { margin-top:8px; }
 <tr><th>Timestamp</th><td><code>2026-05-13T20:20:46.5991243-05:00</code></td></tr></tbody></table></div>
 </section>
 <section class="panel"><h2>Status Summary</h2><div class="stats"><div class='stat'><span class='status status-fail'>FAIL</span><strong>4</strong></div>
-<div class='stat'><span class='status status-info'>INFO</span><strong>14</strong></div>
+<div class='stat'><span class='status status-info'>INFO</span><strong>13</strong></div>
 <div class='stat'><span class='status status-pass'>PASS</span><strong>31</strong></div>
 <div class='stat'><span class='status status-skip'>SKIP</span><strong>1</strong></div>
 <div class='stat'><span class='status status-warn'>WARN</span><strong>1</strong></div></div></section>
@@ -95,7 +95,6 @@ li + li { margin-top:8px; }
 <tr><td>ClusterIP URL</td><td><span class='status status-fail'>FAIL</span></td><td>http://10.96.202.184:80/ failed from target debug pod.</td></tr></tbody></table></section>
 <section class='panel'><h2>Cross-Namespace Layer</h2><table><thead><tr><th>Check</th><th>Status</th><th>Message</th></tr></thead><tbody><tr><td>source exec target</td><td><span class='status status-info'>INFO</span></td><td>Using source pod &#39;source-client&#39; selected by &#39;app=source-client&#39; for source-to-target checks.</td></tr>
 <tr><td>source resolve target FQDN</td><td><span class='status status-pass'>PASS</span></td><td>Source namespace &#39;knm-wrong-source&#39; resolved &#39;web.knm-wrong-targetport.svc.cluster.local&#39;.</td></tr>
-<tr><td>source short name</td><td><span class='status status-info'>INFO</span></td><td>Short name &#39;web&#39; did not resolve from source namespace &#39;knm-wrong-source&#39;. Cross-namespace clients should use &#39;web.knm-wrong-targetport&#39; or the FQDN.</td></tr>
 <tr><td>source curl target FQDN</td><td><span class='status status-fail'>FAIL</span></td><td>http://web.knm-wrong-targetport.svc.cluster.local:80/ failed from source namespace &#39;knm-wrong-source&#39;.</td></tr></tbody></table></section>
 <section class='panel'><h2>MTU Snapshot Layer</h2><table><thead><tr><th>Check</th><th>Status</th><th>Message</th></tr></thead><tbody><tr><td>target pod MTU</td><td><span class='status status-info'>INFO</span></td><td>Target namespace debug pod MTU(s): lo=65536, eth0=1500</td></tr>
 <tr><td>target pod routes</td><td><span class='status status-info'>INFO</span></td><td>Target debug pod routes: default via 10.244.2.1 dev eth0 ; 10.244.2.0/24 via 10.244.2.1 dev eth0 src 10.244.2.19 ; 10.244.2.1 dev eth0 scope link src 10.244.2.19</td></tr>

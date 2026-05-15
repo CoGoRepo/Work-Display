@@ -20,7 +20,7 @@
     "StatusSummary":  [
                           {
                               "Status":  "INFO",
-                              "Count":  14
+                              "Count":  13
                           },
                           {
                               "Status":  "PASS",
@@ -403,14 +403,6 @@
                            "Check":  "source resolve target FQDN",
                            "Status":  "PASS",
                            "Message":  "Source namespace \u0027knm-smoke-source\u0027 resolved \u0027web.knm-smoke-target.svc.cluster.local\u0027.",
-                           "Timestamp":  "2026-05-13T20:17:30.6625425-05:00",
-                           "Data":  null
-                       },
-                       {
-                           "Layer":  "Cross-Namespace Layer",
-                           "Check":  "source short name",
-                           "Status":  "INFO",
-                           "Message":  "Short name \u0027web\u0027 did not resolve from source namespace \u0027knm-smoke-source\u0027. Cross-namespace clients should use \u0027web.knm-smoke-target\u0027 or the FQDN.",
                            "Timestamp":  "2026-05-13T20:17:30.6625425-05:00",
                            "Data":  null
                        },

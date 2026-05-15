@@ -32,7 +32,7 @@
                           },
                           {
                               "Status":  "WARN",
-                              "Count":  3
+                              "Count":  2
                           }
                       ],
     "Failures":  [
@@ -41,16 +41,10 @@
     "Warnings":  [
                      {
                          "Layer":  "NetworkPolicy Layer",
-                         "Check":  "target pod policies",
-                         "Status":  "WARN",
-                         "Message":  "Target pod(s) are selected by NetworkPolicy: allow-from-other-namespace-only. Ingress may be restricted.",
-                         "Data":  null
-                     },
-                     {
-                         "Layer":  "NetworkPolicy Layer",
                          "Check":  "CNI enforcement hint",
                          "Status":  "WARN",
                          "Message":  "NetworkPolicy objects exist, but CNI/provider guess is \u0027kindnet\u0027. Some CNIs, including kindnet and basic Flannel setups, do not enforce Kubernetes NetworkPolicy by themselves.",
+                         "Timestamp":  "2026-05-13T19:45:45.9359961-05:00",
                          "Data":  null
                      },
                      {
@@ -58,6 +52,7 @@
                          "Check":  "target ingress from source",
                          "Status":  "WARN",
                          "Message":  "Target pods are ingress-isolated by NetworkPolicy (allow-from-other-namespace-only), and no rule obviously allows source namespace \u0027knm-ing-source\u0027 on TCP port(s) 80, 5678.",
+                         "Timestamp":  "2026-05-13T19:45:46.3473567-05:00",
                          "Data":  null
                      }
                  ],
@@ -249,8 +244,8 @@
                        {
                            "Layer":  "NetworkPolicy Layer",
                            "Check":  "target pod policies",
-                           "Status":  "WARN",
-                           "Message":  "Target pod(s) are selected by NetworkPolicy: allow-from-other-namespace-only. Ingress may be restricted.",
+                           "Status":  "INFO",
+                           "Message":  "Target pod(s) are selected by NetworkPolicy: allow-from-other-namespace-only. Source-to-target allow rules are evaluated in NetworkPolicy Path Analysis when source pod metadata is available.",
                            "Timestamp":  "2026-05-13T19:45:45.8453768-05:00",
                            "Data":  null
                        },
@@ -348,14 +343,6 @@
                            "Status":  "PASS",
                            "Message":  "Source namespace \u0027knm-ing-source\u0027 resolved \u0027web.knm-ing-target.svc.cluster.local\u0027.",
                            "Timestamp":  "2026-05-13T19:45:48.5640067-05:00",
-                           "Data":  null
-                       },
-                       {
-                           "Layer":  "Cross-Namespace Layer",
-                           "Check":  "source short name",
-                           "Status":  "INFO",
-                           "Message":  "Short name \u0027web\u0027 did not resolve from source namespace \u0027knm-ing-source\u0027. Cross-namespace clients should use \u0027web.knm-ing-target\u0027 or the FQDN.",
-                           "Timestamp":  "2026-05-13T19:45:48.5645381-05:00",
                            "Data":  null
                        },
                        {

@@ -24,7 +24,7 @@
                           },
                           {
                               "Status":  "INFO",
-                              "Count":  11
+                              "Count":  10
                           },
                           {
                               "Status":  "PASS",
@@ -45,6 +45,7 @@
                          "Check":  "source resolve target FQDN",
                          "Status":  "FAIL",
                          "Message":  "Source namespace \u0027knm-dns-source\u0027 could not resolve \u0027web.knm-dns-target.svc.cluster.local\u0027.",
+                         "Timestamp":  "2026-05-13T19:22:35.9976632-05:00",
                          "Data":  null
                      },
                      {
@@ -52,6 +53,7 @@
                          "Check":  "source curl target FQDN",
                          "Status":  "FAIL",
                          "Message":  "http://web.knm-dns-target.svc.cluster.local:80/ failed from source namespace \u0027knm-dns-source\u0027.",
+                         "Timestamp":  "2026-05-13T19:22:41.0989547-05:00",
                          "Data":  null
                      }
                  ],
@@ -61,6 +63,7 @@
                          "Check":  "CNI enforcement hint",
                          "Status":  "WARN",
                          "Message":  "NetworkPolicy objects exist, but CNI/provider guess is \u0027kindnet\u0027. Some CNIs, including kindnet and basic Flannel setups, do not enforce Kubernetes NetworkPolicy by themselves.",
+                         "Timestamp":  "2026-05-13T19:22:05.3902004-05:00",
                          "Data":  null
                      },
                      {
@@ -68,6 +71,7 @@
                          "Check":  "dns egress policy",
                          "Status":  "WARN",
                          "Message":  "Source pod \u0027dns-client\u0027 is egress-isolated by NetworkPolicy (allow-dns-to-coredns-only). Resolver 169.254.20.10 (NodeLocalDNS/link-local) does not appear allowed by egress NetworkPolicies selecting \u0027dns-client\u0027.",
+                         "Timestamp":  "2026-05-13T19:22:05.8143437-05:00",
                          "Data":  null
                      },
                      {
@@ -75,6 +79,7 @@
                          "Check":  "source egress to target",
                          "Status":  "WARN",
                          "Message":  "Source pod \u0027dns-client\u0027 is egress-isolated by NetworkPolicy (allow-dns-to-coredns-only), and no rule obviously allows target namespace \u0027knm-dns-target\u0027 on TCP port(s) 80, 5678.",
+                         "Timestamp":  "2026-05-13T19:22:05.8228546-05:00",
                          "Data":  null
                      }
                  ],
@@ -357,14 +362,6 @@
                            "Status":  "FAIL",
                            "Message":  "Source namespace \u0027knm-dns-source\u0027 could not resolve \u0027web.knm-dns-target.svc.cluster.local\u0027.",
                            "Timestamp":  "2026-05-13T19:22:35.9976632-05:00",
-                           "Data":  null
-                       },
-                       {
-                           "Layer":  "Cross-Namespace Layer",
-                           "Check":  "source short name",
-                           "Status":  "INFO",
-                           "Message":  "Short name \u0027web\u0027 did not resolve from source namespace \u0027knm-dns-source\u0027. Cross-namespace clients should use \u0027web.knm-dns-target\u0027 or the FQDN.",
-                           "Timestamp":  "2026-05-13T19:22:35.9981757-05:00",
                            "Data":  null
                        },
                        {

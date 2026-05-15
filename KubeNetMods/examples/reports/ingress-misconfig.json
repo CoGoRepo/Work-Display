@@ -47,6 +47,7 @@
                          "Check":  "web-ingress backend port",
                          "Status":  "FAIL",
                          "Message":  "Ingress backend port \u00279999\u0027 does not match any port/name on service \u0027web\u0027.",
+                         "Timestamp":  "2026-05-13T19:46:50.2682134-05:00",
                          "Data":  null
                      },
                      {
@@ -54,6 +55,7 @@
                          "Check":  "web-ingress TLS secret",
                          "Status":  "FAIL",
                          "Message":  "TLS secret \u0027missing-web-tls\u0027 was not found/readable in namespace \u0027knm-ingress-misconfig\u0027.",
+                         "Timestamp":  "2026-05-13T19:46:50.3670359-05:00",
                          "Data":  null
                      },
                      {
@@ -61,6 +63,7 @@
                          "Check":  "IngressClass no-such-class",
                          "Status":  "FAIL",
                          "Message":  "IngressClass \u0027no-such-class\u0027 was not found/readable.",
+                         "Timestamp":  "2026-05-13T19:46:50.4364706-05:00",
                          "Data":  null
                      }
                  ],
@@ -70,6 +73,7 @@
                          "Check":  "web-ingress",
                          "Status":  "WARN",
                          "Message":  "Ingress web-ingress class=no-such-class host=web.example.test path=/ backendPort=9999 address=(no address yet)",
+                         "Timestamp":  "2026-05-13T19:46:50.2662151-05:00",
                          "Data":  null
                      }
                  ],

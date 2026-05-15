@@ -24,7 +24,7 @@
                           },
                           {
                               "Status":  "INFO",
-                              "Count":  14
+                              "Count":  13
                           },
                           {
                               "Status":  "PASS",
@@ -45,6 +45,7 @@
                          "Check":  "short service URL",
                          "Status":  "FAIL",
                          "Message":  "http://web:80/ failed from target debug pod.",
+                         "Timestamp":  "2026-05-13T20:20:43.1103923-05:00",
                          "Data":  null
                      },
                      {
@@ -52,6 +53,7 @@
                          "Check":  "service FQDN URL",
                          "Status":  "FAIL",
                          "Message":  "http://web.knm-wrong-targetport.svc.cluster.local:80/ failed from target debug pod.",
+                         "Timestamp":  "2026-05-13T20:20:43.2121607-05:00",
                          "Data":  null
                      },
                      {
@@ -59,6 +61,7 @@
                          "Check":  "ClusterIP URL",
                          "Status":  "FAIL",
                          "Message":  "http://10.96.202.184:80/ failed from target debug pod.",
+                         "Timestamp":  "2026-05-13T20:20:43.3081854-05:00",
                          "Data":  null
                      },
                      {
@@ -66,6 +69,7 @@
                          "Check":  "source curl target FQDN",
                          "Status":  "FAIL",
                          "Message":  "http://web.knm-wrong-targetport.svc.cluster.local:80/ failed from source namespace \u0027knm-wrong-source\u0027.",
+                         "Timestamp":  "2026-05-13T20:20:46.3068664-05:00",
                          "Data":  null
                      }
                  ],
@@ -75,6 +79,7 @@
                          "Check":  "targetPort metadata",
                          "Status":  "WARN",
                          "Message":  "Service targetPort 9999 does not match any declared container port. Declared ports: web-57c496b576-5gx47/echo:5678",
+                         "Timestamp":  "2026-05-13T20:20:40.1758209-05:00",
                          "Data":  null
                      }
                  ],
@@ -444,14 +449,6 @@
                            "Check":  "source resolve target FQDN",
                            "Status":  "PASS",
                            "Message":  "Source namespace \u0027knm-wrong-source\u0027 resolved \u0027web.knm-wrong-targetport.svc.cluster.local\u0027.",
-                           "Timestamp":  "2026-05-13T20:20:46.2151922-05:00",
-                           "Data":  null
-                       },
-                       {
-                           "Layer":  "Cross-Namespace Layer",
-                           "Check":  "source short name",
-                           "Status":  "INFO",
-                           "Message":  "Short name \u0027web\u0027 did not resolve from source namespace \u0027knm-wrong-source\u0027. Cross-namespace clients should use \u0027web.knm-wrong-targetport\u0027 or the FQDN.",
                            "Timestamp":  "2026-05-13T20:20:46.2151922-05:00",
                            "Data":  null
                        },

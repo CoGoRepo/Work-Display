@@ -384,8 +384,7 @@ function Test-KubeNetService {
                     }
                     if ($selectedPolicies.Count -gt 0) {
                         $names = @($selectedPolicies | ForEach-Object { $_.metadata.name }) -join ', '
-                        Add-KubeNetResult -State $state -Layer 'NetworkPolicy Layer' -Check 'target pod policies' -Status 'WARN' -Message "Target pod(s) are selected by NetworkPolicy: $names. Ingress may be restricted."
-                        Add-KubeNetDiagnosis -State $state -Message "NetworkPolicy selects the target pods. If DNS/endpoints are healthy but connection fails, inspect allowed ingress from namespace '$sourceNamespaceEffective' to service '$ServiceName'."
+                        Add-KubeNetResult -State $state -Layer 'NetworkPolicy Layer' -Check 'target pod policies' -Status 'INFO' -Message "Target pod(s) are selected by NetworkPolicy: $names. Source-to-target allow rules are evaluated in NetworkPolicy Path Analysis when source pod metadata is available."
                     } else {
                         Add-KubeNetResult -State $state -Layer 'NetworkPolicy Layer' -Check 'target pod policies' -Status 'PASS' -Message 'No NetworkPolicies appear to select the target pods.'
                     }

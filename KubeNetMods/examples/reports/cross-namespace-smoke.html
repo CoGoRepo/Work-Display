@@ -50,7 +50,7 @@ li + li { margin-top:8px; }
 <tr><th>DebugImagePullPolicy</th><td><code>IfNotPresent</code></td></tr>
 <tr><th>Timestamp</th><td><code>2026-05-13T20:17:31.0369660-05:00</code></td></tr></tbody></table></div>
 </section>
-<section class="panel"><h2>Status Summary</h2><div class="stats"><div class='stat'><span class='status status-info'>INFO</span><strong>14</strong></div>
+<section class="panel"><h2>Status Summary</h2><div class="stats"><div class='stat'><span class='status status-info'>INFO</span><strong>13</strong></div>
 <div class='stat'><span class='status status-pass'>PASS</span><strong>36</strong></div>
 <div class='stat'><span class='status status-skip'>SKIP</span><strong>1</strong></div></div></section>
 <section class="panel"><h2>Failures</h2><table><thead><tr><th>Layer</th><th>Check</th><th>Status</th><th>Message</th></tr></thead><tbody><tr><td colspan='4'>No failures found.</td></tr></tbody></table></section>
@@ -90,7 +90,6 @@ li + li { margin-top:8px; }
 <tr><td>ClusterIP URL</td><td><span class='status status-pass'>PASS</span></td><td>http://10.96.22.33:80/ reachable from target debug pod. HTTP status: 200</td></tr></tbody></table></section>
 <section class='panel'><h2>Cross-Namespace Layer</h2><table><thead><tr><th>Check</th><th>Status</th><th>Message</th></tr></thead><tbody><tr><td>source exec target</td><td><span class='status status-info'>INFO</span></td><td>Using source pod &#39;source-client&#39; selected by &#39;app=source-client&#39; for source-to-target checks.</td></tr>
 <tr><td>source resolve target FQDN</td><td><span class='status status-pass'>PASS</span></td><td>Source namespace &#39;knm-smoke-source&#39; resolved &#39;web.knm-smoke-target.svc.cluster.local&#39;.</td></tr>
-<tr><td>source short name</td><td><span class='status status-info'>INFO</span></td><td>Short name &#39;web&#39; did not resolve from source namespace &#39;knm-smoke-source&#39;. Cross-namespace clients should use &#39;web.knm-smoke-target&#39; or the FQDN.</td></tr>
 <tr><td>source curl target FQDN</td><td><span class='status status-pass'>PASS</span></td><td>http://web.knm-smoke-target.svc.cluster.local:80/ reachable from source namespace &#39;knm-smoke-source&#39;. HTTP status: 200</td></tr></tbody></table></section>
 <section class='panel'><h2>MTU Snapshot Layer</h2><table><thead><tr><th>Check</th><th>Status</th><th>Message</th></tr></thead><tbody><tr><td>target pod MTU</td><td><span class='status status-info'>INFO</span></td><td>Target namespace debug pod MTU(s): lo=65536, eth0=1500</td></tr>
 <tr><td>target pod routes</td><td><span class='status status-info'>INFO</span></td><td>Target debug pod routes: default via 10.244.1.1 dev eth0 ; 10.244.1.0/24 via 10.244.1.1 dev eth0 src 10.244.1.13 ; 10.244.1.1 dev eth0 scope link src 10.244.1.13</td></tr>
