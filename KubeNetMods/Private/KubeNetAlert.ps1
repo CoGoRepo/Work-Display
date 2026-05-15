@@ -213,7 +213,7 @@ function New-KubeNetNormalizedAlert {
         ServiceName       = $service
         DeploymentName    = $deployment
         PodName           = $pod
-        PodSelector       = $podSelector
+        TargetPodSelector = $podSelector
         SourceNamespace   = $sourceNamespace
         SourcePodName     = $sourcePod
         SourcePodSelector = $sourceSelector
@@ -294,7 +294,7 @@ function Test-KubeNetAlertScope {
 
     $checks = @()
     switch ($Alert.Symptom) {
-        'dns' { $checks += 'TestPodDns'; $checks += 'Deep' }
+        'dns' { $checks += 'TestTargetPodDns'; $checks += 'Deep' }
         'network-policy' { $checks += 'Deep' }
         'endpoints' { }
         'ingress' { $checks += 'TestIngress' }
@@ -324,7 +324,7 @@ function ConvertTo-KubeNetParameterPlan {
     if (-not [string]::IsNullOrWhiteSpace($Alert.Namespace)) { $params.Namespace = $Alert.Namespace }
     if (-not [string]::IsNullOrWhiteSpace($Alert.ServiceName)) { $params.ServiceName = $Alert.ServiceName }
     if (-not [string]::IsNullOrWhiteSpace($Alert.DeploymentName)) { $params.DeploymentName = $Alert.DeploymentName }
-    if (-not [string]::IsNullOrWhiteSpace($Alert.PodSelector)) { $params.PodSelector = $Alert.PodSelector }
+    if (-not [string]::IsNullOrWhiteSpace($Alert.TargetPodSelector)) { $params.TargetPodSelector = $Alert.TargetPodSelector }
     if (-not [string]::IsNullOrWhiteSpace($Alert.SourceNamespace)) { $params.SourceNamespace = $Alert.SourceNamespace }
     if (-not [string]::IsNullOrWhiteSpace($Alert.SourcePodName)) { $params.SourcePodName = $Alert.SourcePodName }
     if (-not [string]::IsNullOrWhiteSpace($Alert.SourcePodSelector)) { $params.SourcePodSelector = $Alert.SourcePodSelector }
@@ -332,7 +332,7 @@ function ConvertTo-KubeNetParameterPlan {
     foreach ($check in @($scope.RecommendedChecks)) {
         switch ($check) {
             'Deep' { $params.Deep = $true }
-            'TestPodDns' { $params.TestPodDns = $true }
+            'TestTargetPodDns' { $params.TestTargetPodDns = $true }
             'TestIngress' { $params.TestIngress = $true }
             'TestLoadBalancer' { $params.TestLoadBalancer = $true }
             'TestEgress' { $params.TestEgress = $true }
@@ -344,7 +344,7 @@ function ConvertTo-KubeNetParameterPlan {
         $params.TestIngress = $true
         $params.IngressUrls = @($reachabilityUrls)
     } elseif ($Alert.Symptom -in @('egress', 'loadbalancer') -and $reachabilityUrls.Count -gt 0) {
-        $params.ExternalTargets = @($reachabilityUrls)
+        $params.ExternalUrls = @($reachabilityUrls)
     }
 
     $previewParts = @('Test-KubeNetService')

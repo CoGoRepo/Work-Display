@@ -88,8 +88,8 @@ Use `-SkipDebugPod` for read-mostly inspection.
 | `-DeploymentName` | empty | Target Deployment name. Defaults to Service name when omitted. |
 | `-ServicePort` | `0` | Service port to test. Uses the first Service port when omitted. |
 | `-UrlScheme` | `http` | URL scheme for curl/HTTP checks. |
-| `-Path` | `/` | HTTP path used for curl checks. |
-| `-PodSelector` | empty | Override target pod selector. |
+| `-UrlPath` | `/` | HTTP path used for curl checks. |
+| `-TargetPodSelector` | empty | Override target pod selector. |
 | `-TargetContext` | current | kubectl context for the target cluster. |
 
 ### Source
@@ -108,7 +108,7 @@ Use `-SkipDebugPod` for read-mostly inspection.
 |---|---:|---|
 | `-DebugImage` | `nicolaka/netshoot:latest` | Debug pod image. |
 | `-DebugImagePullPolicy` | `IfNotPresent` | Pull policy for temporary debug pods. |
-| `-DebugPodName` | `kubenetmods-debug` | Target namespace debug pod name. |
+| `-TargetDebugPodName` | `kubenetmods-debug` | Target namespace debug pod name. |
 | `-SourceDebugPodName` | `kubenetmods-source-debug` | Source namespace debug pod name. |
 | `-SkipDebugPod` | false | Skip checks that create or exec into debug pods. |
 
@@ -116,18 +116,18 @@ Use `-SkipDebugPod` for read-mostly inspection.
 
 | Parameter | Default | Purpose |
 |---|---:|---|
-| `-TestPodDns` | false | Exec into target workload pod for DNS checks. |
-| `-DnsPodName` | empty | Target workload pod for `-TestPodDns`. |
-| `-DnsContainer` | empty | Container for target workload DNS exec. |
+| `-TestTargetPodDns` | false | Exec into target workload pod for DNS checks. |
+| `-TargetDnsPodName` | empty | Target workload pod for `-TestTargetPodDns`. |
+| `-TargetDnsContainer` | empty | Container for target workload DNS exec. |
 | `-TestEgress` | false | Test egress from source namespace/pod. |
-| `-EgressTargets` | `https://kubernetes.default.svc` | URLs for egress checks. |
+| `-EgressUrls` | `https://kubernetes.default.svc` | URLs for egress checks. |
 | `-TestIngress` | false | Test explicit Ingress URLs when supplied. Static Ingress discovery runs when Ingresses exist. |
 | `-IngressUrls` | empty | Explicit Ingress URLs to test from local host. |
 | `-TestLoadBalancer` | false | Inspect/test LoadBalancer service external paths. |
-| `-ExternalTargets` | empty | Explicit external URLs to test from local host. |
+| `-ExternalUrls` | empty | Explicit external URLs to test from local host. |
 | `-TestPortForward` | false | Run `kubectl port-forward` validation. |
 | `-SkipNodePort` | false | Skip NodePort/host reachability checks. |
-| `-Deep` | false | Enables `-TestPodDns`, `-TestEgress`, `-TestIngress`, and `-TestLoadBalancer`. |
+| `-Deep` | false | Enables `-TestTargetPodDns`, `-TestEgress`, `-TestIngress`, and `-TestLoadBalancer`. |
 
 ### Output
 
@@ -268,9 +268,9 @@ Test-KubeNetService `
 Test-KubeNetService `
   -Namespace apps `
   -ServiceName api `
-  -TestPodDns `
-  -DnsPodName api-7f8d9c4d5b-x2p6q `
-  -DnsContainer api
+  -TestTargetPodDns `
+  -TargetDnsPodName api-7f8d9c4d5b-x2p6q `
+  -TargetDnsContainer api
 ```
 
 ### Ingress URL
@@ -291,7 +291,7 @@ Test-KubeNetService `
   -Namespace apps `
   -ServiceName api `
   -TestEgress `
-  -EgressTargets https://kubernetes.default.svc,https://example.com
+  -EgressUrls https://kubernetes.default.svc,https://example.com
 ```
 
 ### LoadBalancer Or External URL
@@ -307,7 +307,7 @@ Test-KubeNetService `
 Test-KubeNetService `
   -Namespace apps `
   -ServiceName api `
-  -ExternalTargets https://api.example.com/health
+  -ExternalUrls https://api.example.com/health
 ```
 
 ### Port-Forward
@@ -332,7 +332,7 @@ Test-KubeNetService `
   -TargetContext prod-cluster `
   -Namespace database `
   -ServiceName postgres `
-  -ExternalTargets https://postgres.example.internal
+  -ExternalUrls https://postgres.example.internal
 ```
 
 ## Reading The Report

@@ -1,11 +1,11 @@
-﻿{
+{
     "Target":  {
                    "Namespace":  "knm-dns-target",
                    "Service":  "web",
                    "Deployment":  "web",
                    "ServicePort":  0,
                    "UrlScheme":  "http",
-                   "Path":  "/",
+                   "UrlPath":  "/",
                    "SourceNamespace":  "knm-dns-source",
                    "TargetContext":  "",
                    "SourceContext":  "",

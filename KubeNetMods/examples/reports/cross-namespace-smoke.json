@@ -1,11 +1,11 @@
-﻿{
+{
     "Target":  {
                    "Namespace":  "knm-smoke-target",
                    "Service":  "web",
                    "Deployment":  "web",
                    "ServicePort":  0,
                    "UrlScheme":  "http",
-                   "Path":  "/",
+                   "UrlPath":  "/",
                    "SourceNamespace":  "knm-smoke-source",
                    "TargetContext":  "",
                    "SourceContext":  "",

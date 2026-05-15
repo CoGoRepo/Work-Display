@@ -243,10 +243,10 @@ function Get-KubeNetHttpStatusFromText {
 }
 
 function Get-KubeNetUrlPath {
-    param([string]$Path)
-    if ([string]::IsNullOrWhiteSpace($Path)) { return '/' }
-    if ($Path.StartsWith('/')) { return $Path }
-    "/$Path"
+    param([string]$UrlPath)
+    if ([string]::IsNullOrWhiteSpace($UrlPath)) { return '/' }
+    if ($UrlPath.StartsWith('/')) { return $UrlPath }
+    "/$UrlPath"
 }
 
 function Get-KubeNetServicePort {
@@ -276,11 +276,11 @@ function New-KubeNetServiceUrls {
         [string]$Namespace,
         [int]$ServicePort,
         [string]$UrlScheme,
-        [string]$Path
+        [string]$UrlPath
     )
 
     $port = Get-KubeNetServicePort -Service $Service -ServicePort $ServicePort
-    $urlPath = Get-KubeNetUrlPath -Path $Path
+    $urlPath = Get-KubeNetUrlPath -UrlPath $UrlPath
     $fqdn = "$ServiceName.$Namespace.svc.cluster.local"
     $clusterIp = $Service.spec.clusterIP
 
@@ -371,10 +371,10 @@ function Get-KubeNetSelectedPods {
         [object]$Service,
         [string]$DeploymentName,
         [string]$ServiceName,
-        [string]$PodSelector
+        [string]$TargetPodSelector
     )
 
-    $selector = $PodSelector
+    $selector = $TargetPodSelector
     if ([string]::IsNullOrWhiteSpace($selector) -and $Service -and $Service.spec.selector) {
         $selector = Join-KubeNetSelector -Selector $Service.spec.selector
     }

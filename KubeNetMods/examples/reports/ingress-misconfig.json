@@ -1,11 +1,11 @@
-﻿{
+{
     "Target":  {
                    "Namespace":  "knm-ingress-misconfig",
                    "Service":  "web",
                    "Deployment":  "web",
                    "ServicePort":  0,
                    "UrlScheme":  "http",
-                   "Path":  "/",
+                   "UrlPath":  "/",
                    "SourceNamespace":  "knm-ingress-misconfig",
                    "TargetContext":  "",
                    "SourceContext":  "",

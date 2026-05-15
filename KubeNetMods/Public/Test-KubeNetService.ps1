@@ -6,8 +6,8 @@ function Test-KubeNetService {
         [string]$DeploymentName = '',
         [int]$ServicePort = 0,
         [string]$UrlScheme = 'http',
-        [string]$Path = '/',
-        [string]$PodSelector = '',
+        [string]$UrlPath = '/',
+        [string]$TargetPodSelector = '',
         [string]$SourceNamespace = '',
         [string]$SourcePodName = '',
         [string]$SourcePodSelector = '',
@@ -18,21 +18,21 @@ function Test-KubeNetService {
         [string]$DebugImage = 'nicolaka/netshoot:latest',
         [ValidateSet('Always', 'IfNotPresent', 'Never')]
         [string]$DebugImagePullPolicy = 'IfNotPresent',
-        [string]$DebugPodName = 'kubenetmods-debug',
+        [string]$TargetDebugPodName = 'kubenetmods-debug',
         [string]$SourceDebugPodName = 'kubenetmods-source-debug',
         [int]$TimeoutSec = 5,
         [switch]$SkipDebugPod,
         [switch]$SkipNodePort,
         [switch]$TestPortForward,
-        [switch]$TestPodDns,
-        [string]$DnsPodName = '',
-        [string]$DnsContainer = '',
+        [switch]$TestTargetPodDns,
+        [string]$TargetDnsPodName = '',
+        [string]$TargetDnsContainer = '',
         [switch]$TestEgress,
-        [string[]]$EgressTargets = @('https://kubernetes.default.svc'),
+        [string[]]$EgressUrls = @('https://kubernetes.default.svc'),
         [switch]$TestIngress,
         [string[]]$IngressUrls = @(),
         [switch]$TestLoadBalancer,
-        [string[]]$ExternalTargets = @(),
+        [string[]]$ExternalUrls = @(),
         [switch]$Deep,
         [string]$ExportJson = '',
         [string]$ExportHtml = '',
@@ -46,7 +46,7 @@ function Test-KubeNetService {
     $targetContextEffective = $TargetContext
     $sourceIsTarget = ($sourceNamespaceEffective -eq $Namespace -and $sourceContextEffective -eq $targetContextEffective)
     if ($Deep) {
-        $TestPodDns = $true
+        $TestTargetPodDns = $true
         $TestEgress = $true
         $TestIngress = $true
         $TestLoadBalancer = $true
@@ -259,7 +259,7 @@ function Test-KubeNetService {
 
         Write-KubeNetSection -State $state -Name 'Pod Health Layer' -Description 'Finds selected pods and checks phase, readiness, declared ports, and container states.'
         try {
-            $podData = Get-KubeNetSelectedPods -State $state -Context $targetContextEffective -Namespace $Namespace -Service $service -DeploymentName $effectiveDeploymentName -ServiceName $ServiceName -PodSelector $PodSelector
+            $podData = Get-KubeNetSelectedPods -State $state -Context $targetContextEffective -Namespace $Namespace -Service $service -DeploymentName $effectiveDeploymentName -ServiceName $ServiceName -TargetPodSelector $TargetPodSelector
             if ([string]::IsNullOrWhiteSpace($podData.Selector)) {
                 Add-KubeNetResult -State $state -Layer 'Pod Health Layer' -Check 'pod selector' -Status 'WARN' -Message 'No pod selector could be inferred. Service selector may be missing, or Deployment was not found.'
             } else {
@@ -488,7 +488,7 @@ function Test-KubeNetService {
         }
 
         if (-not $SkipDebugPod) {
-            $targetDebugReady = Ensure-KubeNetDebugPod -State $state -Context $targetContextEffective -Namespace $Namespace -Name $DebugPodName -Image $DebugImage -ImagePullPolicy $DebugImagePullPolicy -TimeoutSec $TimeoutSec -Layer 'Target Debug Pod'
+            $targetDebugReady = Ensure-KubeNetDebugPod -State $state -Context $targetContextEffective -Namespace $Namespace -Name $TargetDebugPodName -Image $DebugImage -ImagePullPolicy $DebugImagePullPolicy -TimeoutSec $TimeoutSec -Layer 'Target Debug Pod'
             if (-not $sourceIsTarget) {
                 $sourceDebugReady = Ensure-KubeNetDebugPod -State $state -Context $sourceContextEffective -Namespace $sourceNamespaceEffective -Name $SourceDebugPodName -Image $DebugImage -ImagePullPolicy $DebugImagePullPolicy -TimeoutSec $TimeoutSec -Layer 'Source Debug Pod'
             } else {
@@ -500,9 +500,9 @@ function Test-KubeNetService {
 
         Write-KubeNetSection -State $state -Name 'DNS And Service Routing Layer' -Description 'Tests service DNS and HTTP/TCP-ish reachability from target and source namespaces.'
         if ($service -and $targetDebugReady) {
-            $urls = New-KubeNetServiceUrls -Service $service -ServiceName $ServiceName -Namespace $Namespace -ServicePort $ServicePort -UrlScheme $UrlScheme -Path $Path
+            $urls = New-KubeNetServiceUrls -Service $service -ServiceName $ServiceName -Namespace $Namespace -ServicePort $ServicePort -UrlScheme $UrlScheme -UrlPath $UrlPath
             foreach ($name in @($ServiceName, "$ServiceName.$Namespace.svc.cluster.local")) {
-                $dns = Invoke-KubeNetInPod -State $state -Context $targetContextEffective -Namespace $Namespace -PodName $DebugPodName -Command "nslookup $name"
+                $dns = Invoke-KubeNetInPod -State $state -Context $targetContextEffective -Namespace $Namespace -PodName $TargetDebugPodName -Command "nslookup $name"
                 if ($dns.ExitCode -eq 0) {
                     Add-KubeNetResult -State $state -Layer 'DNS And Service Routing Layer' -Check "target resolve $name" -Status 'PASS' -Message "Target debug pod resolved '$name'."
                 } else {
@@ -518,7 +518,7 @@ function Test-KubeNetService {
                 if ($servicePortMissing) {
                     Add-KubeNetResult -State $state -Layer 'DNS And Service Routing Layer' -Check $target.Name -Status 'SKIP' -Message "Skipped because service port $ServicePort is not exposed."
                 } else {
-                    $curl = Invoke-KubeNetInPod -State $state -Context $targetContextEffective -Namespace $Namespace -PodName $DebugPodName -Command "curl -k -sS -o /dev/null -w 'HTTP_STATUS=%{http_code}' --connect-timeout $TimeoutSec --max-time $TimeoutSec '$($target.Url)'"
+                    $curl = Invoke-KubeNetInPod -State $state -Context $targetContextEffective -Namespace $Namespace -PodName $TargetDebugPodName -Command "curl -k -sS -o /dev/null -w 'HTTP_STATUS=%{http_code}' --connect-timeout $TimeoutSec --max-time $TimeoutSec '$($target.Url)'"
                     if ($curl.ExitCode -eq 0) {
                         Add-KubeNetResult -State $state -Layer 'DNS And Service Routing Layer' -Check $target.Name -Status 'PASS' -Message "$($target.Url) reachable from target debug pod. HTTP status: $(Get-KubeNetHttpStatusFromText $curl.Text)"
                     } else {
@@ -528,7 +528,7 @@ function Test-KubeNetService {
             }
         }
 
-        $sourceExecPodName = if ($sourceIsTarget) { $DebugPodName } else { $SourceDebugPodName }
+        $sourceExecPodName = if ($sourceIsTarget) { $TargetDebugPodName } else { $SourceDebugPodName }
         $sourceExecContainer = ''
         $usingSuppliedSourcePod = -not [string]::IsNullOrWhiteSpace($SourcePodName)
         $usingSelectedSourcePod = $false
@@ -574,7 +574,7 @@ function Test-KubeNetService {
             $targetEth0Mtu = $null
             $sourceEth0Mtu = $null
             if ($targetDebugReady) {
-                $targetMtuOutput = Invoke-KubeNetInPod -State $state -Context $targetContextEffective -Namespace $Namespace -PodName $DebugPodName -Command 'ip -o link show'
+                $targetMtuOutput = Invoke-KubeNetInPod -State $state -Context $targetContextEffective -Namespace $Namespace -PodName $TargetDebugPodName -Command 'ip -o link show'
                 if ($targetMtuOutput.ExitCode -eq 0) {
                     $targetMtu = Get-KubeNetMtuSummary -Text $targetMtuOutput.Text
                     $targetEth0 = @($targetMtu | Where-Object { $_.Name -eq 'eth0' } | Select-Object -First 1)
@@ -583,7 +583,7 @@ function Test-KubeNetService {
                 } else {
                     Add-KubeNetResult -State $state -Layer 'MTU Snapshot Layer' -Check 'target pod MTU' -Status 'SKIP' -Message "Could not read target debug pod MTU. The debug image may not include the ip command."
                 }
-                $targetRoutes = Invoke-KubeNetInPod -State $state -Context $targetContextEffective -Namespace $Namespace -PodName $DebugPodName -Command 'ip route show'
+                $targetRoutes = Invoke-KubeNetInPod -State $state -Context $targetContextEffective -Namespace $Namespace -PodName $TargetDebugPodName -Command 'ip route show'
                 if ($targetRoutes.ExitCode -eq 0) {
                     Add-KubeNetResult -State $state -Layer 'MTU Snapshot Layer' -Check 'target pod routes' -Status 'INFO' -Message "Target debug pod routes: $(Format-KubeNetRouteSummary -Text $targetRoutes.Text)" -Data $targetRoutes.Text
                 }
@@ -668,11 +668,11 @@ function Test-KubeNetService {
                         Name      = 'target debug pod'
                         Context   = $targetContextEffective
                         Namespace = $Namespace
-                        PodName   = $DebugPodName
+                        PodName   = $TargetDebugPodName
                         Container = ''
                     }
                 }
-                if ($sourceCanExec -and (-not $targetDebugReady -or $sourceExecPodName -ne $DebugPodName -or $sourceNamespaceEffective -ne $Namespace)) {
+                if ($sourceCanExec -and (-not $targetDebugReady -or $sourceExecPodName -ne $TargetDebugPodName -or $sourceNamespaceEffective -ne $Namespace)) {
                     $directSources += [PSCustomObject]@{
                         Name      = 'source exec pod'
                         Context   = $sourceContextEffective
@@ -685,7 +685,7 @@ function Test-KubeNetService {
                 foreach ($directSource in $directSources) {
                     foreach ($pod in $readyTargetPods) {
                         foreach ($directPort in $directPorts) {
-                            $directUrl = "$UrlScheme`://$($pod.status.podIP)`:$directPort$(Get-KubeNetUrlPath -Path $Path)"
+                            $directUrl = "$UrlScheme`://$($pod.status.podIP)`:$directPort$(Get-KubeNetUrlPath -UrlPath $UrlPath)"
                             $directCurl = Invoke-KubeNetInPod -State $state -Context $directSource.Context -Namespace $directSource.Namespace -PodName $directSource.PodName -Container $directSource.Container -Command "curl -k -sS -o /dev/null -w 'HTTP_STATUS=%{http_code}' --connect-timeout $TimeoutSec --max-time $TimeoutSec '$directUrl'"
                             $checkName = "$($directSource.Name) to $($pod.metadata.name):$directPort"
                             if ($directCurl.ExitCode -eq 0) {
@@ -709,7 +709,7 @@ function Test-KubeNetService {
         if ($service -and $sourceCanExec) {
             $targetFqdn = "$ServiceName.$Namespace.svc.cluster.local"
             $targetPort = Get-KubeNetServicePort -Service $service -ServicePort $ServicePort
-            $targetUrl = "$UrlScheme`://$targetFqdn`:$targetPort$(Get-KubeNetUrlPath -Path $Path)"
+            $targetUrl = "$UrlScheme`://$targetFqdn`:$targetPort$(Get-KubeNetUrlPath -UrlPath $UrlPath)"
             $shortDns = Invoke-KubeNetInPod -State $state -Context $sourceContextEffective -Namespace $sourceNamespaceEffective -PodName $sourceExecPodName -Container $sourceExecContainer -Command "nslookup $ServiceName"
             $fqdnDns = Invoke-KubeNetInPod -State $state -Context $sourceContextEffective -Namespace $sourceNamespaceEffective -PodName $sourceExecPodName -Container $sourceExecContainer -Command "nslookup $targetFqdn"
             if ($fqdnDns.ExitCode -eq 0) {
@@ -736,12 +736,12 @@ function Test-KubeNetService {
             }
         }
 
-        if ($TestPodDns -and $selectedPods.Count -gt 0) {
+        if ($TestTargetPodDns -and $selectedPods.Count -gt 0) {
             Write-KubeNetSection -State $state -Name 'Workload Pod DNS Layer' -Description 'Execs into a selected workload pod and compares runtime DNS with Kubernetes metadata.'
-            $podForDns = if ([string]::IsNullOrWhiteSpace($DnsPodName)) {
+            $podForDns = if ([string]::IsNullOrWhiteSpace($TargetDnsPodName)) {
                 @($selectedPods | Where-Object { $_.status.phase -eq 'Running' -and (Get-KubeNetPodReady -Pod $_) } | Select-Object -First 1)
             } else {
-                @($selectedPods | Where-Object { $_.metadata.name -eq $DnsPodName } | Select-Object -First 1)
+                @($selectedPods | Where-Object { $_.metadata.name -eq $TargetDnsPodName } | Select-Object -First 1)
             }
             if ($podForDns.Count -eq 0) {
                 Add-KubeNetResult -State $state -Layer 'Workload Pod DNS Layer' -Check 'pod dns exec' -Status 'SKIP' -Message 'No selected running/ready pod was available for DNS exec checks.'
@@ -757,7 +757,7 @@ function Test-KubeNetService {
                 if ($dnsPolicy -eq 'Default') {
                     Add-KubeNetResult -State $state -Layer 'Workload Pod DNS Layer' -Check 'dnsPolicy' -Status 'WARN' -Message 'Pod dnsPolicy is Default, so it inherits node DNS instead of cluster DNS.'
                 }
-                $resolv = Invoke-KubeNetInPod -State $state -Context $targetContextEffective -Namespace $Namespace -PodName $podName -Container $DnsContainer -Command 'cat /etc/resolv.conf'
+                $resolv = Invoke-KubeNetInPod -State $state -Context $targetContextEffective -Namespace $Namespace -PodName $podName -Container $TargetDnsContainer -Command 'cat /etc/resolv.conf'
                 $resolvSummary = $null
                 if ($resolv.ExitCode -eq 0) {
                     $resolvSummary = Get-KubeNetResolvConfSummary -Text $resolv.Text
@@ -767,7 +767,7 @@ function Test-KubeNetService {
                 }
                 $fqdn = "$ServiceName.$Namespace.svc.cluster.local"
                 foreach ($lookup in @($fqdn, $ServiceName)) {
-                    $nslookup = Invoke-KubeNetInPod -State $state -Context $targetContextEffective -Namespace $Namespace -PodName $podName -Container $DnsContainer -Command "if command -v nslookup >/dev/null 2>&1; then nslookup $lookup; else echo KubeNetModsToolMissing:nslookup; exit 127; fi"
+                    $nslookup = Invoke-KubeNetInPod -State $state -Context $targetContextEffective -Namespace $Namespace -PodName $podName -Container $TargetDnsContainer -Command "if command -v nslookup >/dev/null 2>&1; then nslookup $lookup; else echo KubeNetModsToolMissing:nslookup; exit 127; fi"
                     if ($nslookup.ExitCode -eq 0) {
                         Add-KubeNetResult -State $state -Layer 'Workload Pod DNS Layer' -Check "resolve $lookup" -Status 'PASS' -Message "Pod '$podName' resolved '$lookup'."
                     } elseif ($nslookup.ExitCode -eq 127 -or $nslookup.Text -match 'KubeNetModsToolMissing') {
@@ -799,9 +799,9 @@ function Test-KubeNetService {
                 $nodePorts = @($service.spec.ports | Where-Object { $_.nodePort } | ForEach-Object { [int]$_.nodePort })
                 foreach ($nodePort in $nodePorts) {
                     foreach ($nodeIp in ($nodeIps | Sort-Object -Unique)) {
-                        $url = "$UrlScheme`://$nodeIp`:$nodePort$(Get-KubeNetUrlPath -Path $Path)"
+                        $url = "$UrlScheme`://$nodeIp`:$nodePort$(Get-KubeNetUrlPath -UrlPath $UrlPath)"
                         if ($targetDebugReady) {
-                            $inside = Invoke-KubeNetInPod -State $state -Context $targetContextEffective -Namespace $Namespace -PodName $DebugPodName -Command "curl -k -sS -o /dev/null -w 'HTTP_STATUS=%{http_code}' --connect-timeout $TimeoutSec --max-time $TimeoutSec '$url'"
+                            $inside = Invoke-KubeNetInPod -State $state -Context $targetContextEffective -Namespace $Namespace -PodName $TargetDebugPodName -Command "curl -k -sS -o /dev/null -w 'HTTP_STATUS=%{http_code}' --connect-timeout $TimeoutSec --max-time $TimeoutSec '$url'"
                             Add-KubeNetResult -State $state -Layer 'NodePort And Host Layer' -Check "$nodeIp`:$nodePort inside cluster" -Status $(if ($inside.ExitCode -eq 0) { 'PASS' } else { 'FAIL' }) -Message "$url inside-cluster status: $(Get-KubeNetHttpStatusFromText $inside.Text)"
                         }
                         $local = Test-KubeNetLocalHttp -Url $url -TimeoutSec $TimeoutSec
@@ -815,7 +815,7 @@ function Test-KubeNetService {
 
         if ($TestEgress -and $sourceCanExec) {
             Write-KubeNetSection -State $state -Name 'Egress Layer' -Description 'Tests outbound DNS/HTTP reachability from the source namespace debug pod.'
-            foreach ($target in $EgressTargets) {
+            foreach ($target in $EgressUrls) {
                 $curl = Invoke-KubeNetInPod -State $state -Context $sourceContextEffective -Namespace $sourceNamespaceEffective -PodName $sourceExecPodName -Container $sourceExecContainer -Command "curl -k -sS -o /dev/null -w 'HTTP_STATUS=%{http_code}' --connect-timeout $TimeoutSec --max-time $TimeoutSec '$target'"
                 if ($curl.ExitCode -eq 0) {
                     Add-KubeNetResult -State $state -Layer 'Egress Layer' -Check $target -Status 'PASS' -Message "Source namespace reached '$target'. HTTP status: $(Get-KubeNetHttpStatusFromText $curl.Text)"
@@ -838,13 +838,13 @@ function Test-KubeNetService {
             }
         }
 
-        if ($TestLoadBalancer -or $ExternalTargets.Count -gt 0) {
+        if ($TestLoadBalancer -or $ExternalUrls.Count -gt 0) {
             Write-KubeNetSection -State $state -Name 'External Load Balancing Layer' -Description 'Tests explicit external addresses from the local host.'
-            $targetsToTest = @($ExternalTargets)
+            $targetsToTest = @($ExternalUrls)
             if ($service -and $service.spec.type -eq 'LoadBalancer') {
                 foreach ($address in @($service.status.loadBalancer.ingress | ForEach-Object { if ($_.ip) { $_.ip } elseif ($_.hostname) { $_.hostname } })) {
                     foreach ($port in @($service.spec.ports | ForEach-Object { $_.port })) {
-                        $targetsToTest += "$UrlScheme`://$address`:$port$(Get-KubeNetUrlPath -Path $Path)"
+                        $targetsToTest += "$UrlScheme`://$address`:$port$(Get-KubeNetUrlPath -UrlPath $UrlPath)"
                     }
                 }
             }
@@ -882,7 +882,7 @@ function Test-KubeNetService {
                     if ($IsWindows -or $PSVersionTable.PSEdition -eq 'Desktop') { $startParams.WindowStyle = 'Hidden' }
                     $process = Start-Process @startParams
                     Start-Sleep -Seconds 2
-                    $url = "$UrlScheme`://127.0.0.1`:$localPort$(Get-KubeNetUrlPath -Path $Path)"
+                    $url = "$UrlScheme`://127.0.0.1`:$localPort$(Get-KubeNetUrlPath -UrlPath $UrlPath)"
                     $pf = Test-KubeNetLocalHttp -Url $url -TimeoutSec $TimeoutSec
                     Add-KubeNetResult -State $state -Layer 'Port-Forward Layer' -Check 'port-forward' -Status $(if ($pf.Ok) { 'PASS' } else { 'FAIL' }) -Message "$(if ($pf.Ok) { "Port-forward worked on localhost:$localPort. HTTP status: $($pf.StatusCode)" } else { "Port-forward started but localhost test failed: $($pf.Error)" })"
                 } catch {
@@ -935,13 +935,15 @@ function Test-KubeNetService {
             Deployment      = $effectiveDeploymentName
             ServicePort     = $ServicePort
             UrlScheme       = $UrlScheme
-            Path            = $Path
+            UrlPath         = $UrlPath
             SourceNamespace = $sourceNamespaceEffective
             TargetContext   = $targetContextEffective
             SourceContext   = $sourceContextEffective
             KubeCommand     = $state.KubeCommand
             DebugImage      = $DebugImage
             DebugImagePullPolicy = $DebugImagePullPolicy
+            TargetDebugPodName = $TargetDebugPodName
+            SourceDebugPodName = $SourceDebugPodName
             Timestamp       = (Get-Date).ToString('o')
         }
         Diagnoses      = $finalDiagnoses
