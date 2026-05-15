@@ -114,18 +114,30 @@ function Get-KubeNetFinalDiagnoses {
     })
     $hasProvenFailure = ($runtimeFailures.Count -gt 0 -or $configFailures.Count -gt 0)
     $hasDnsPolicyRoot = @($items | Where-Object { $_ -match 'runtime resolver|NodeLocalDNS/link-local' }).Count -gt 0
-    $hasTargetPortRoot = @($items | Where-Object { $_ -match 'Service targetPort does not match declared container ports' }).Count -gt 0
+    $hasTargetPortRoot = @($items | Where-Object { $_ -match 'Service targetPort .*does not match|service targetPort and pod port naming' }).Count -gt 0
+    $hasPrimaryTargetPortRoot = @($items | Where-Object { $_ -match '^Primary issue: .*targetPort' }).Count -gt 0
+    $hasNamedTargetPortRoot = @($items | Where-Object { $_ -match "uses named targetPort" }).Count -gt 0
     $hasSpecificPathPolicyRoot = @($items | Where-Object { $_ -match 'source egress NetworkPolicy may block traffic|target ingress NetworkPolicy may block traffic' }).Count -gt 0
     $hasMissingEndpointsRoot = @($items | Where-Object { $_ -match 'no ready endpoints|service has no ready endpoints' }).Count -gt 0
+    $hasSelectorRoot = @($items | Where-Object { $_ -match 'No pods matched the selector' }).Count -gt 0
+    $hasActionableRoot = @($items | Where-Object {
+        $_ -notmatch 'may not enforce them' -and
+        $_ -notmatch 'NetworkPolicy selects the target pods'
+    }).Count -gt 0
 
     $filtered = foreach ($item in $items) {
         if (-not $hasProvenFailure -and $item -match 'Likely issue: .*NetworkPolicy may block traffic') { continue }
         if (-not $hasProvenFailure -and $item -match 'NetworkPolicy selects the target pods') { continue }
         if (-not $hasProvenFailure -and $item -match 'may not enforce them') { continue }
+        if ($hasActionableRoot -and $item -match 'may not enforce them') { continue }
+        if ($hasSelectorRoot -and $item -match 'service has no ready endpoints|no ready endpoints') { continue }
         if ($hasDnsPolicyRoot -and $item -match 'source egress NetworkPolicy may block traffic') { continue }
         if ($hasDnsPolicyRoot -and $item -match 'cannot resolve target service FQDN') { continue }
         if ($hasDnsPolicyRoot -and $item -match 'Source-to-target service connection failed') { continue }
         if ($hasDnsPolicyRoot -and $item -match 'may not enforce them') { continue }
+        if ($hasTargetPortRoot -and $item -match 'NetworkPolicy may block traffic') { continue }
+        if ($hasPrimaryTargetPortRoot -and $item -match 'EndpointSlice addresses exist') { continue }
+        if ($hasNamedTargetPortRoot -and $item -match 'target pods are reachable directly') { continue }
         if ($hasTargetPortRoot -and $item -match 'Source-to-target service connection failed') { continue }
         if ($hasSpecificPathPolicyRoot -and $item -match 'NetworkPolicy selects the target pods') { continue }
         if ($hasMissingEndpointsRoot -and $item -match 'Source-to-target connection failed') { continue }
@@ -323,11 +335,12 @@ function Ensure-KubeNetDebugPod {
 
     $State.DebugPods.Add([PSCustomObject]@{ Namespace = $Namespace; Context = $Context; Name = $Name }) | Out-Null
 
+    $readyTimeoutSec = [Math]::Max($TimeoutSec, 30)
     $wait = Invoke-KubeNetKubectl -State $State -Context $Context -Arguments @(
         'wait', "pod/$Name",
         '-n', $Namespace,
         '--for=condition=Ready',
-        "--timeout=$TimeoutSec`s"
+        "--timeout=$readyTimeoutSec`s"
     ) -AllowFailure
 
     if ($wait.ExitCode -ne 0) {
@@ -466,16 +479,16 @@ function Test-KubeNetTargetPortMetadata {
     if ([int]::TryParse($targetText, [ref]$number)) {
         $matches = @($ContainerPorts | Where-Object { $_.ContainerPort -eq $number })
         if ($matches.Count -gt 0) {
-            return [PSCustomObject]@{ Status = 'Match'; Message = "Service targetPort $number matches declared container port(s): $((@($matches | ForEach-Object { "$($_.Pod)/$($_.Container):$($_.ContainerPort)" }) | Sort-Object -Unique) -join ', ')" }
+            return [PSCustomObject]@{ Status = 'Match'; TargetPortKind = 'Numeric'; Message = "Service targetPort $number matches declared container port(s): $((@($matches | ForEach-Object { "$($_.Pod)/$($_.Container):$($_.ContainerPort)" }) | Sort-Object -Unique) -join ', ')" }
         }
-        return [PSCustomObject]@{ Status = 'Mismatch'; Message = "Service targetPort $number does not match any declared container port. Declared ports: $((@($ContainerPorts | ForEach-Object { "$($_.Pod)/$($_.Container):$($_.ContainerPort)" }) | Sort-Object -Unique) -join ', ')" }
+        return [PSCustomObject]@{ Status = 'Mismatch'; TargetPortKind = 'Numeric'; Message = "Service targetPort $number does not match any declared container port. Declared ports: $((@($ContainerPorts | ForEach-Object { "$($_.Pod)/$($_.Container):$($_.ContainerPort)" }) | Sort-Object -Unique) -join ', ')" }
     }
 
     $nameMatches = @($ContainerPorts | Where-Object { $_.Name -eq $targetText })
     if ($nameMatches.Count -gt 0) {
-        return [PSCustomObject]@{ Status = 'Match'; Message = "Service named targetPort '$targetText' resolves to declared container port(s): $((@($nameMatches | ForEach-Object { "$($_.Pod)/$($_.Container):$($_.Name)=$($_.ContainerPort)" }) | Sort-Object -Unique) -join ', ')" }
+        return [PSCustomObject]@{ Status = 'Match'; TargetPortKind = 'Named'; Message = "Service named targetPort '$targetText' resolves to declared container port(s): $((@($nameMatches | ForEach-Object { "$($_.Pod)/$($_.Container):$($_.Name)=$($_.ContainerPort)" }) | Sort-Object -Unique) -join ', ')" }
     }
-    [PSCustomObject]@{ Status = 'Mismatch'; Message = "Service targetPort '$targetText' does not match any declared named container port." }
+    [PSCustomObject]@{ Status = 'Mismatch'; TargetPortKind = 'Named'; Message = "Service targetPort '$targetText' does not match any declared named container port." }
 }
 
 function Get-KubeNetResolvConfSummary {

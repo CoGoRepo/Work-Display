@@ -346,6 +346,8 @@ Read the HTML report from the top down:
 
 Warnings do not always mean something is broken. They mean the configuration is worth reviewing.
 
+NetworkPolicy findings are additive, just like Kubernetes NetworkPolicy itself. A default-deny-style policy and a second allow policy can both select the same pod; if any selected policy allows the path, the module should treat that path as allowed and show the allow reason.
+
 ## Samples
 
 Sample HTML and JSON reports are in [`examples/reports`](./examples/reports).

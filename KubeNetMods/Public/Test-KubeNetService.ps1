@@ -58,6 +58,7 @@ function Test-KubeNetService {
     $selectedServicePort = $null
     $containerPorts = @()
     $targetPortMetadataStatus = ''
+    $targetPortAnalysis = $null
     $servicePortMissing = $false
     $targetHasReadyEndpoints = $false
     $targetDebugReady = $false
@@ -285,8 +286,11 @@ function Test-KubeNetService {
                     $containerPorts = Get-KubeNetContainerPorts -Pods $selectedPods
                     $targetPortAnalysis = Test-KubeNetTargetPortMetadata -ServicePortObject $selectedServicePort -ContainerPorts $containerPorts
                     $targetPortMetadataStatus = $targetPortAnalysis.Status
-                    $targetStatus = if ($targetPortAnalysis.Status -eq 'Mismatch') { 'WARN' } elseif ($targetPortAnalysis.Status -eq 'NoDeclaredPorts') { 'WARN' } else { 'PASS' }
+                    $targetStatus = if ($targetPortAnalysis.Status -eq 'Mismatch' -and $targetPortAnalysis.TargetPortKind -eq 'Named') { 'FAIL' } elseif ($targetPortAnalysis.Status -eq 'Mismatch') { 'WARN' } elseif ($targetPortAnalysis.Status -eq 'NoDeclaredPorts') { 'WARN' } else { 'PASS' }
                     Add-KubeNetResult -State $state -Layer 'Service Layer' -Check 'targetPort metadata' -Status $targetStatus -Message $targetPortAnalysis.Message
+                    if ($targetPortAnalysis.Status -eq 'Mismatch' -and $targetPortAnalysis.TargetPortKind -eq 'Named') {
+                        Add-KubeNetDiagnosis -State $state -Message "Primary issue: service '$ServiceName' uses named targetPort '$($selectedServicePort.targetPort)', but selected pods do not declare a matching named container port."
+                    }
                 }
             }
         } catch {
@@ -324,7 +328,8 @@ function Test-KubeNetService {
                             $candidatePorts = Get-KubeNetConnectionPortCandidates -ServicePortObject $selectedServicePort -ContainerPorts $containerPorts
                             $endpointPortMatches = @($slicePorts | Where-Object { $candidatePorts -contains $_.Port })
                             if ($candidatePorts.Count -gt 0 -and $endpointPortMatches.Count -eq 0) {
-                                Add-KubeNetResult -State $state -Layer 'EndpointSlice Layer' -Check 'endpoint port match' -Status 'WARN' -Message "EndpointSlice ports do not match expected service/target port candidate(s): $($candidatePorts -join ', ')."
+                                $endpointPortStatus = if (@($slicePorts | Where-Object { $_.Port -eq 0 }).Count -gt 0 -or ($targetPortMetadataStatus -eq 'Mismatch' -and $targetPortAnalysis.TargetPortKind -eq 'Named')) { 'FAIL' } else { 'WARN' }
+                                Add-KubeNetResult -State $state -Layer 'EndpointSlice Layer' -Check 'endpoint port match' -Status $endpointPortStatus -Message "EndpointSlice ports do not match expected service/target port candidate(s): $($candidatePorts -join ', ')."
                                 Add-KubeNetDiagnosis -State $state -Message "EndpointSlice addresses exist, but endpoint ports do not match expected service/target ports. Check service targetPort and pod port naming."
                             } elseif ($candidatePorts.Count -gt 0) {
                                 $matchedPorts = (@($endpointPortMatches | ForEach-Object { $_.Port }) | Sort-Object -Unique) -join ', '
@@ -334,7 +339,9 @@ function Test-KubeNetService {
                     }
                 } else {
                     Add-KubeNetResult -State $state -Layer 'EndpointSlice Layer' -Check 'ready addresses' -Status 'FAIL' -Message "No ready EndpointSlice addresses found for service '$ServiceName'."
-                    if (@($selectedPods | Where-Object { Get-KubeNetPodReady -Pod $_ }).Count -eq 0) {
+                    if ($selectedPods.Count -eq 0) {
+                        Add-KubeNetDiagnosis -State $state -Message 'The service has no ready endpoints because no pods matched its selector. Fix the Service selector or workload labels.'
+                    } elseif (@($selectedPods | Where-Object { Get-KubeNetPodReady -Pod $_ }).Count -eq 0) {
                         Add-KubeNetDiagnosis -State $state -Message 'The service has no ready endpoints because selected pods are not Ready. Fix workload health first.'
                     } else {
                         Add-KubeNetDiagnosis -State $state -Message 'Pods may be healthy but service has no ready endpoints. Check service selector, readiness gates, and EndpointSlice controller.'
