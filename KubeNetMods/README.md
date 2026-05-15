@@ -35,6 +35,21 @@ Report statuses:
 
 The `Diagnosis` section is filtered so downstream symptoms do not drown out the clearest likely cause.
 
+## CNI-Specific Policy Analysis
+
+KubeNetMods includes a `CNI Policy Layer` for common Calico and Cilium policy behavior.
+
+| Provider | Current checks |
+|---|---|
+| Cilium | `CiliumNetworkPolicy`, `CiliumClusterwideNetworkPolicy`, `egressDeny`, `ingressDeny`, endpoint selectors, namespace labels, target port matching, source egress default-deny, target ingress default-deny, and missing DNS egress allow hints. |
+| Calico | Calico `NetworkPolicy`, `GlobalNetworkPolicy`, explicit `Deny`, ordered `Allow` before later `Deny`, namespace selectors, pod selectors, target port matching, source egress default-deny, target ingress default-deny, and missing DNS egress allow hints. |
+
+This layer does not replace native CNI tools. It is meant to answer:
+
+```text
+Does a common Cilium or Calico policy pattern obviously explain this failing path?
+```
+
 ## What It Can Do
 
 | Area | Checks |
@@ -44,7 +59,7 @@ The `Diagnosis` section is filtered so downstream symptoms do not drown out the 
 | Service path | Service type, ClusterIP, selector, ports, `targetPort`, selected pod health, EndpointSlice readiness. |
 | Runtime reachability | DNS and HTTP from debug pods, source workload pods, direct pod IP, Service FQDN, NodePort, optional port-forward. |
 | DNS | Pod DNS settings, `/etc/resolv.conf`, `dnsPolicy`, `dnsConfig`, `hostNetwork`, NodeLocalDNS/link-local resolver cases. |
-| NetworkPolicy | Source egress, target ingress, DNS egress, and CNI enforcement hints. |
+| NetworkPolicy | Source egress, target ingress, DNS egress, CNI enforcement hints, and basic Calico/Cilium deny/default-deny analysis. |
 | Ingress | Ingress routes to the Service, backend port/name, TLS secret, IngressClass, controller pod hints, optional URL tests. |
 | LoadBalancer/external | LoadBalancer addresses, provider hints, optional explicit external URL tests. |
 | Snapshots | Pod-side MTU and route snapshots, plus source/target `eth0` MTU comparison when available. |
@@ -61,7 +76,8 @@ The `Diagnosis` section is filtered so downstream symptoms do not drown out the 
 - It does not call AWS, Azure, or GCP APIs.
 - It does not prove country/region edge-provider outages unless they appear through explicit external URL tests.
 - It does not validate application auth or business logic. HTTP checks focus on reachability.
-- NetworkPolicy analysis is heuristic. Complex selectors or CNI-specific behavior may still need human review.
+- NetworkPolicy analysis is heuristic. Complex selectors, tiers, service mesh policies, generated policies, and provider-specific dataplane state may still need human review.
+- Calico/Cilium analysis currently focuses on common policy shapes. It does not fully emulate every selector, tier, identity, FQDN, entity, or eBPF dataplane decision.
 - Alert normalization is best-effort because alert platforms and teams use different label/tag names.
 
 ## Safety
@@ -346,7 +362,7 @@ Read the HTML report from the top down:
 
 Warnings do not always mean something is broken. They mean the configuration is worth reviewing.
 
-NetworkPolicy findings are additive, just like Kubernetes NetworkPolicy itself. A default-deny-style policy and a second allow policy can both select the same pod; if any selected policy allows the path, the module should treat that path as allowed and show the allow reason.
+NetworkPolicy findings are additive for native Kubernetes policies, but some CNIs add their own behavior. Calico and Cilium support policy forms that can explicitly deny traffic or place a selected endpoint into default-deny mode. When KubeNetMods can see a clear provider-specific cause, it reports that in the `CNI Policy Layer` and filters the follow-on DNS/curl failures down to the likely root.
 
 ## Samples
 

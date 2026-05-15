@@ -654,6 +654,15 @@ function Test-KubeNetService {
             foreach ($diagnosis in @($pathPolicy.Diagnoses)) {
                 Add-KubeNetDiagnosis -State $state -Message $diagnosis
             }
+
+            Write-KubeNetSection -State $state -Name 'CNI Policy Layer' -Description 'Checks common CNI-specific policy CRDs for explicit denies on this path.'
+            $cniPolicy = Test-KubeNetCniSpecificPolicyPath -State $state -Context $targetContextEffective -CniProviderGuess $cniProviderGuess -SourcePod $sourcePodObject -SourceNamespace $sourceNamespaceObject -TargetPods $selectedPods -TargetNamespace $targetNamespaceObject -Service $service -ServicePortObject $selectedServicePort -ContainerPorts $containerPorts
+            foreach ($cniResult in @($cniPolicy.Results)) {
+                Add-KubeNetResult -State $state -Layer 'CNI Policy Layer' -Check $cniResult.Check -Status $cniResult.Status -Message $cniResult.Message
+            }
+            foreach ($diagnosis in @($cniPolicy.Diagnoses)) {
+                Add-KubeNetDiagnosis -State $state -Message $diagnosis
+            }
         }
 
         if ($selectedPods.Count -gt 0 -and ($targetDebugReady -or $sourceCanExec)) {
