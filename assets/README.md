@@ -8,6 +8,5 @@ Suggested screenshot folders:
 
 ```text
 screenshots/ato-matic/
-screenshots/kubenetchecker/
 screenshots/azure/
 ```

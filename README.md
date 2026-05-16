@@ -10,7 +10,6 @@ This repo is part portfolio, part toolbox. Some items are polished enough to use
 |---|---|---|
 | **ATO-Matic v1** | Docker-based local STIG vulnerability and POA&M tracker with seeded PostgreSQL data. | [projects/ato-matic-v1](./projects/ato-matic-v1) |
 | **KubeNetMods** | Standalone PowerShell module for Kubernetes network, DNS, policy, ingress, egress, and alert-driven troubleshooting. | [github.com/CoGoRepo/KubeNetMods](https://github.com/CoGoRepo/KubeNetMods) |
-| **KubeNetChecker** | PowerShell Kubernetes network troubleshooting tool with layered diagnosis and JSON/HTML reports. | [powershell/kubernetes/KubeNetChecker](./powershell/kubernetes/KubeNetChecker) |
 | **Preload External MFA** | Microsoft Graph / Entra ID automation for preloading external authentication methods during migration work. | [powershell/azure](./powershell/azure) |
 
 ## Screenshots
@@ -25,21 +24,6 @@ The dashboard is the best quick visual summary of the app: findings, severity, a
 ![ATO-Matic dashboard](./assets/screenshots/ato-matic/dashboard.png)
 
 Additional screenshots are included in the [ATO-Matic project README](./projects/ato-matic-v1).
-
-</details>
-
-<details>
-<summary>KubeNetChecker screenshots</summary>
-
-KubeNetChecker can export a dark HTML report for sharing troubleshooting results.
-
-![KubeNetChecker HTML report](./assets/screenshots/kubenetchecker/html-report-1.png)
-
-Additional report screenshots:
-
-![KubeNetChecker report details](./assets/screenshots/kubenetchecker/html-report-2.png)
-
-![KubeNetChecker report results](./assets/screenshots/kubenetchecker/html-report-3.png)
 
 </details>
 
