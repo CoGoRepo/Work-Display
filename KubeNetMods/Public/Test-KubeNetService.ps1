@@ -656,7 +656,7 @@ function Test-KubeNetService {
             }
 
             Write-KubeNetSection -State $state -Name 'CNI Policy Layer' -Description 'Checks Calico/Cilium policy CRDs separately from native Kubernetes NetworkPolicy.'
-            $cniPolicy = Test-KubeNetCniSpecificPolicyPath -State $state -Context $targetContextEffective -CniProviderGuess $cniProviderGuess -SourcePod $sourcePodObject -SourceNamespace $sourceNamespaceObject -TargetPods $selectedPods -TargetNamespace $targetNamespaceObject -Service $service -ServicePortObject $selectedServicePort -ContainerPorts $containerPorts
+            $cniPolicy = Test-KubeNetCniSpecificPolicyPath -State $state -Context $targetContextEffective -CniProviderGuess $cniProviderGuess -SourcePod $sourcePodObject -SourceNamespace $sourceNamespaceObject -TargetPods $selectedPods -TargetNamespace $targetNamespaceObject -Service $service -ServicePortObject $selectedServicePort -ContainerPorts $containerPorts -SourceResolvSummary $sourceResolvSummary -CoreDnsPods $coreDnsPods -NodeLocalDnsPods $nodeLocalDnsPods -KubeSystemNamespace $kubeSystemNamespace -CoreDnsServiceIp $coreDnsServiceIp
             foreach ($cniResult in @($cniPolicy.Results)) {
                 Add-KubeNetResult -State $state -Layer 'CNI Policy Layer' -Check $cniResult.Check -Status $cniResult.Status -Message $cniResult.Message
             }

@@ -55,7 +55,12 @@ function Test-KubeNetCniSpecificPolicyPath {
         [object]$TargetNamespace,
         [object]$Service,
         [object]$ServicePortObject,
-        [object[]]$ContainerPorts
+        [object[]]$ContainerPorts,
+        [object]$SourceResolvSummary = $null,
+        [object[]]$CoreDnsPods = @(),
+        [object[]]$NodeLocalDnsPods = @(),
+        [object]$KubeSystemNamespace = $null,
+        [string]$CoreDnsServiceIp = ''
     )
 
     if ($null -eq $SourcePod -or $null -eq $SourceNamespace -or $null -eq $TargetNamespace -or @($TargetPods).Count -eq 0 -or $null -eq $Service) {
@@ -88,7 +93,7 @@ function Test-KubeNetCniSpecificPolicyPath {
     $calicoNetworkSets += Get-KubeNetOptionalJsonList -State $State -Context $Context -Arguments @('get', 'globalnetworksets.crd.projectcalico.org', '-o', 'json')
     $calicoTiers = Get-KubeNetOptionalJsonList -State $State -Context $Context -Arguments @('get', 'tiers.crd.projectcalico.org', '-o', 'json')
     if ($calicoPolicies.Count -gt 0 -or $CniProviderGuess -match 'Calico') {
-        $calico = Test-KubeNetCalicoPolicyPath -Policies $calicoPolicies -NetworkSets $calicoNetworkSets -Tiers $calicoTiers -SourcePod $SourcePod -SourceNamespace $SourceNamespace -TargetPods $TargetPods -TargetNamespace $TargetNamespace -Service $Service -ServicePortObject $ServicePortObject -ContainerPorts $ContainerPorts
+        $calico = Test-KubeNetCalicoPolicyPath -Policies $calicoPolicies -NetworkSets $calicoNetworkSets -Tiers $calicoTiers -SourcePod $SourcePod -SourceNamespace $SourceNamespace -TargetPods $TargetPods -TargetNamespace $TargetNamespace -Service $Service -ServicePortObject $ServicePortObject -ContainerPorts $ContainerPorts -SourceResolvSummary $SourceResolvSummary -CoreDnsPods $CoreDnsPods -NodeLocalDnsPods $NodeLocalDnsPods -KubeSystemNamespace $KubeSystemNamespace -CoreDnsServiceIp $CoreDnsServiceIp
         $results += @($calico.Results)
         $diagnoses += @($calico.Diagnoses)
     }

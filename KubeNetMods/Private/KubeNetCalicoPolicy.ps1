@@ -457,6 +457,184 @@ function Test-KubeNetCalicoRuleLooksLikeDnsAllow {
     Test-KubeNetCalicoPortSetMatches -Ports @($Rule.destination.ports) -NotPorts @($Rule.destination.notPorts) -PortFacts ([PSCustomObject]@{ Protocol = 'UDP'; Ports = @(53); Names = @() })
 }
 
+function Get-KubeNetCalicoDnsResolverPeers {
+    param(
+        [string]$Nameserver,
+        [object[]]$CoreDnsPods,
+        [object[]]$NodeLocalDnsPods,
+        [object]$KubeSystemNamespace,
+        [string]$CoreDnsServiceIp
+    )
+
+    $kind = Get-KubeNetDnsResolverKind -Nameserver $Nameserver -CoreDnsServiceIp $CoreDnsServiceIp
+    $peerPods = @()
+    $peerIps = @($Nameserver)
+
+    if ($kind -eq 'CoreDNS service IP') {
+        $peerPods = @($CoreDnsPods)
+        foreach ($pod in @($CoreDnsPods)) {
+            if ($pod.status.podIP) { $peerIps += [string]$pod.status.podIP }
+            foreach ($podIp in @($pod.status.podIPs)) {
+                if ($podIp.ip) { $peerIps += [string]$podIp.ip }
+            }
+        }
+    } elseif ($kind -eq 'NodeLocalDNS/link-local') {
+        $peerPods = @($NodeLocalDnsPods)
+    } else {
+        foreach ($pod in @($CoreDnsPods + $NodeLocalDnsPods)) {
+            if (Test-KubeNetIpMatchesPodAddress -Address $Nameserver -Pod $pod) {
+                $peerPods += $pod
+            }
+        }
+    }
+
+    if ($peerPods.Count -eq 0) {
+        $peerPods = @([PSCustomObject]@{
+            metadata = [PSCustomObject]@{
+                name      = "resolver-$Nameserver"
+                namespace = if ($KubeSystemNamespace) { [string]$KubeSystemNamespace.metadata.name } else { 'kube-system' }
+                labels    = [PSCustomObject]@{}
+            }
+            spec = [PSCustomObject]@{}
+            status = [PSCustomObject]@{ podIP = $Nameserver; podIPs = @([PSCustomObject]@{ ip = $Nameserver }) }
+        })
+    }
+
+    [PSCustomObject]@{
+        Kind          = $kind
+        PeerPods      = @($peerPods)
+        PeerIps       = @($peerIps | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object -Unique)
+        PeerNamespace = $KubeSystemNamespace
+    }
+}
+
+function Test-KubeNetCalicoRuleMatchesDnsResolver {
+    param(
+        [object]$Rule,
+        [string]$Nameserver,
+        [object[]]$CoreDnsPods,
+        [object[]]$NodeLocalDnsPods,
+        [object]$KubeSystemNamespace,
+        [string]$CoreDnsServiceIp,
+        [object[]]$NetworkSets,
+        [string]$PolicyNamespace,
+        [bool]$PolicyIsGlobal
+    )
+
+    $udpFacts = [PSCustomObject]@{ Protocol = 'UDP'; Ports = @(53); Names = @() }
+    $tcpFacts = [PSCustomObject]@{ Protocol = 'TCP'; Ports = @(53); Names = @() }
+    $matchesProtocol = (Test-KubeNetCalicoRuleProtocolMatches -Rule $Rule -PortFacts $udpFacts) -or
+        (Test-KubeNetCalicoRuleProtocolMatches -Rule $Rule -PortFacts $tcpFacts)
+    if (-not $matchesProtocol) {
+        return [PSCustomObject]@{ Matches = $false; Reason = 'rule protocol does not match UDP/TCP DNS' }
+    }
+    if (-not (Test-KubeNetCalicoPortSetMatches -Ports @($Rule.destination.ports) -NotPorts @($Rule.destination.notPorts) -PortFacts $udpFacts)) {
+        return [PSCustomObject]@{ Matches = $false; Reason = 'destination port criteria do not match DNS port 53' }
+    }
+
+    $resolver = Get-KubeNetCalicoDnsResolverPeers -Nameserver $Nameserver -CoreDnsPods $CoreDnsPods -NodeLocalDnsPods $NodeLocalDnsPods -KubeSystemNamespace $KubeSystemNamespace -CoreDnsServiceIp $CoreDnsServiceIp
+    $entity = Test-KubeNetCalicoEntityMatches -Entity $Rule.destination -PeerPods $resolver.PeerPods -PeerNamespace $resolver.PeerNamespace -PeerIps $resolver.PeerIps -Service $null -NetworkSets $NetworkSets -PortFacts $udpFacts -PolicyNamespace $PolicyNamespace -PolicyIsGlobal $PolicyIsGlobal
+    if ($entity.Matches) {
+        return [PSCustomObject]@{ Matches = $true; Reason = "$($resolver.Kind) resolver $Nameserver matched destination criteria: $($entity.Reason)" }
+    }
+
+    [PSCustomObject]@{ Matches = $false; Reason = "$($resolver.Kind) resolver $Nameserver did not match destination criteria: $($entity.Reason)" }
+}
+
+function Test-KubeNetCalicoDnsEgressPolicy {
+    param(
+        [object[]]$Policies,
+        [object[]]$NetworkSets,
+        [object[]]$Tiers,
+        [object]$SourcePod,
+        [object]$ResolvSummary,
+        [object[]]$CoreDnsPods,
+        [object[]]$NodeLocalDnsPods,
+        [object]$KubeSystemNamespace,
+        [string]$CoreDnsServiceIp
+    )
+
+    $results = @()
+    $diagnoses = @()
+    if ($null -eq $SourcePod -or $null -eq $ResolvSummary -or @($ResolvSummary.Nameservers).Count -eq 0) {
+        return [PSCustomObject]@{ Results = $results; Diagnoses = $diagnoses; AnyDnsAllow = $false; AnyBlocked = $false }
+    }
+
+    $selectedPolicies = @($Policies | Where-Object {
+        $null -ne $_ -and
+        [string]$_.kind -notmatch '^Staged' -and
+        (Get-KubeNetCalicoPolicyTypes -Policy $_) -contains 'Egress' -and
+        (Test-KubeNetCalicoPolicyAppliesToPod -Policy $_ -Pod $SourcePod)
+    })
+    if ($selectedPolicies.Count -eq 0) {
+        return [PSCustomObject]@{ Results = $results; Diagnoses = $diagnoses; AnyDnsAllow = $false; AnyBlocked = $false }
+    }
+
+    $policyNames = @($selectedPolicies | ForEach-Object {
+        $ns = [string]$_.metadata.namespace
+        $tier = Get-KubeNetCalicoPolicyTier -Policy $_
+        if ([string]::IsNullOrWhiteSpace($ns)) { "$($_.metadata.name) ($tier)" } else { "$ns/$($_.metadata.name) ($tier)" }
+    } | Sort-Object -Unique)
+    $resolverMessages = @()
+    $blockedResolvers = @()
+    $anyAllow = $false
+
+    foreach ($nameserver in @($ResolvSummary.Nameservers)) {
+        $dnsMatches = @()
+        foreach ($policy in @($selectedPolicies)) {
+            $policyNamespace = [string]$policy.metadata.namespace
+            $policyName = if ([string]::IsNullOrWhiteSpace($policyNamespace)) { [string]$policy.metadata.name } else { "$policyNamespace/$($policy.metadata.name)" }
+            $policyIsGlobal = [string]$policy.kind -eq 'GlobalNetworkPolicy' -or [string]::IsNullOrWhiteSpace($policyNamespace)
+            $tier = Get-KubeNetCalicoPolicyTier -Policy $policy
+            $tierOrder = Get-KubeNetCalicoTierOrder -TierName $tier -Tiers $Tiers
+            $policyOrder = Get-KubeNetCalicoPolicyOrder -Policy $policy
+            $ruleIndex = 0
+            foreach ($rule in @($policy.spec.egress | Where-Object { $null -ne $_ })) {
+                $ruleIndex++
+                $action = [string]$rule.action
+                if ($action -notin @('Allow', 'Deny', 'Pass', 'Log')) { continue }
+                if ($action -eq 'Log') { continue }
+                $match = Test-KubeNetCalicoRuleMatchesDnsResolver -Rule $rule -Nameserver $nameserver -CoreDnsPods $CoreDnsPods -NodeLocalDnsPods $NodeLocalDnsPods -KubeSystemNamespace $KubeSystemNamespace -CoreDnsServiceIp $CoreDnsServiceIp -NetworkSets $NetworkSets -PolicyNamespace $policyNamespace -PolicyIsGlobal $policyIsGlobal
+                if ($match.Matches) {
+                    $dnsMatches += [PSCustomObject]@{ Policy = $policyName; Tier = $tier; TierOrder = $tierOrder; PolicyOrder = $policyOrder; Action = $action; RuleIndex = $ruleIndex; Reason = $match.Reason }
+                }
+            }
+        }
+
+        $orderedDnsMatches = @($dnsMatches | Sort-Object TierOrder, PolicyOrder, RuleIndex, Policy)
+        $firstDnsMatch = $orderedDnsMatches | Select-Object -First 1
+        if ($firstDnsMatch -and $firstDnsMatch.Action -eq 'Pass') {
+            $pass = $firstDnsMatch
+            $firstDnsMatch = @($orderedDnsMatches | Where-Object { $_.TierOrder -gt $pass.TierOrder } | Select-Object -First 1)
+        }
+
+        $kind = Get-KubeNetDnsResolverKind -Nameserver $nameserver -CoreDnsServiceIp $CoreDnsServiceIp
+        if ($firstDnsMatch -and $firstDnsMatch.Action -eq 'Allow') {
+            $anyAllow = $true
+            $resolverMessages += "Resolver $nameserver ($kind) is allowed by $($firstDnsMatch.Policy) in tier '$($firstDnsMatch.Tier)'."
+        } elseif ($firstDnsMatch -and $firstDnsMatch.Action -eq 'Deny') {
+            $blockedResolvers += "$nameserver ($kind)"
+            $resolverMessages += "Resolver $nameserver ($kind) is explicitly denied by $($firstDnsMatch.Policy) in tier '$($firstDnsMatch.Tier)'."
+        } else {
+            $blockedResolvers += "$nameserver ($kind)"
+            $resolverMessages += "Resolver $nameserver ($kind) has no matching Calico Allow/Pass rule."
+        }
+    }
+
+    if ($blockedResolvers.Count -gt 0) {
+        $results += [PSCustomObject]@{ Check = 'Calico DNS egress resolver'; Status = 'FAIL'; Message = "Calico egress policy selects source pod '$($SourcePod.metadata.name)', but runtime DNS resolver(s) are not allowed. $($resolverMessages -join ' ') Selecting policy/policies: $($policyNames -join ', ')." }
+        if (($blockedResolvers -join ' ') -match 'NodeLocalDNS') {
+            $diagnoses += "Primary issue: Calico egress policy blocks DNS from '$($SourcePod.metadata.namespace)/$($SourcePod.metadata.name)' to its NodeLocalDNS/link-local runtime resolver(s) $($blockedResolvers -join ', '). Add UDP/TCP 53 egress to the NodeLocalDNS/link-local resolver IP, or adjust the DNS policy/path."
+        } else {
+            $diagnoses += "Primary issue: Calico egress policy blocks DNS from '$($SourcePod.metadata.namespace)/$($SourcePod.metadata.name)' to runtime resolver(s) $($blockedResolvers -join ', '). Policies: $($policyNames -join ', ')."
+        }
+        return [PSCustomObject]@{ Results = $results; Diagnoses = $diagnoses; AnyDnsAllow = $anyAllow; AnyBlocked = $true }
+    }
+
+    $results += [PSCustomObject]@{ Check = 'Calico DNS egress resolver'; Status = 'PASS'; Message = "Calico egress policy appears to allow source pod '$($SourcePod.metadata.name)' to its runtime DNS resolver(s). $($resolverMessages -join ' ')" }
+    [PSCustomObject]@{ Results = $results; Diagnoses = $diagnoses; AnyDnsAllow = $true; AnyBlocked = $false }
+}
+
 function New-KubeNetCalicoUnsupportedResults {
     param([object[]]$Policies)
 
@@ -494,7 +672,12 @@ function Test-KubeNetCalicoPolicyPath {
         [object]$TargetNamespace,
         [object]$Service,
         [object]$ServicePortObject,
-        [object[]]$ContainerPorts
+        [object[]]$ContainerPorts,
+        [object]$SourceResolvSummary = $null,
+        [object[]]$CoreDnsPods = @(),
+        [object[]]$NodeLocalDnsPods = @(),
+        [object]$KubeSystemNamespace = $null,
+        [string]$CoreDnsServiceIp = ''
     )
 
     $enforcedPolicies = @($Policies | Where-Object { $null -ne $_ -and [string]$_.kind -notmatch '^Staged' })
@@ -574,39 +757,43 @@ function Test-KubeNetCalicoPolicyPath {
         $passMatch = $firstMatch
         $nextTierMatch = @($orderedMatches | Where-Object { $_.TierOrder -gt $passMatch.TierOrder } | Select-Object -First 1)
         if ($nextTierMatch) {
-            $results += [PSCustomObject]@{ Check = 'Calico pass action'; Status = 'INFO'; Message = "Calico Pass matched first in tier '$($passMatch.Tier)' via $($passMatch.Policy); continuing analysis with next matching tier '$($nextTierMatch.Tier)'." }
+            $results += [PSCustomObject]@{ Check = 'Calico target path pass action'; Status = 'INFO'; Message = "For the target service path, Calico Pass matched first in tier '$($passMatch.Tier)' via $($passMatch.Policy); continuing analysis with next matching tier '$($nextTierMatch.Tier)'." }
             $firstMatch = $nextTierMatch
         } else {
-            $results += [PSCustomObject]@{ Check = 'Calico pass action'; Status = 'WARN'; Message = "First matching Calico action is Pass: $($passMatch.Policy) $($passMatch.Direction) in tier '$($passMatch.Tier)'. No later tier match was found; KubeNetMods does not evaluate workload profiles after Pass." }
+            $results += [PSCustomObject]@{ Check = 'Calico target path pass action'; Status = 'WARN'; Message = "For the target service path, first matching Calico action is Pass: $($passMatch.Policy) $($passMatch.Direction) in tier '$($passMatch.Tier)'. No later tier match was found; KubeNetMods does not evaluate workload profiles after Pass." }
             $firstMatch = $null
         }
     }
 
     if ($firstMatch) {
         if ($firstMatch.Action -eq 'Deny') {
-            $results += [PSCustomObject]@{ Check = 'Calico first matching action'; Status = 'FAIL'; Message = "First matching Calico action is Deny: $($firstMatch.Policy) $($firstMatch.Direction) in tier '$($firstMatch.Tier)' (reason: $($firstMatch.Reason))." }
+            $results += [PSCustomObject]@{ Check = 'Calico target path first matching action'; Status = 'FAIL'; Message = "For the target service path, first matching Calico action is Deny: $($firstMatch.Policy) $($firstMatch.Direction) in tier '$($firstMatch.Tier)' (reason: $($firstMatch.Reason))." }
             $diagnoses += "Primary issue: Calico policy denies '$($SourcePod.metadata.namespace)/$($SourcePod.metadata.name)' to service '$($TargetNamespace.metadata.name)/$($Service.metadata.name)'. First match: $($firstMatch.Policy) $($firstMatch.Direction) Deny in tier '$($firstMatch.Tier)'."
         } elseif ($firstMatch.Action -eq 'Allow') {
-            $results += [PSCustomObject]@{ Check = 'Calico first matching action'; Status = 'PASS'; Message = "First matching Calico action is Allow: $($firstMatch.Policy) $($firstMatch.Direction) in tier '$($firstMatch.Tier)' (reason: $($firstMatch.Reason))." }
+            $results += [PSCustomObject]@{ Check = 'Calico target path first matching action'; Status = 'PASS'; Message = "For the target service path, first matching Calico action is Allow: $($firstMatch.Policy) $($firstMatch.Direction) in tier '$($firstMatch.Tier)' (reason: $($firstMatch.Reason))." }
             $laterDenies = @($orderedMatches | Where-Object { $_.Action -eq 'Deny' -and ($_.TierOrder -gt $firstMatch.TierOrder -or ($_.TierOrder -eq $firstMatch.TierOrder -and ($_.PolicyOrder -gt $firstMatch.PolicyOrder -or ($_.PolicyOrder -eq $firstMatch.PolicyOrder -and $_.RuleIndex -gt $firstMatch.RuleIndex)))) })
             if ($laterDenies.Count -gt 0) {
                 $later = $laterDenies | Select-Object -First 1
-                $results += [PSCustomObject]@{ Check = 'Calico later deny'; Status = 'INFO'; Message = "A later Deny also matches ($($later.Policy) $($later.Direction) in tier '$($later.Tier)'), but the earlier Allow is the first matching action for this path." }
+                $results += [PSCustomObject]@{ Check = 'Calico target path later deny'; Status = 'INFO'; Message = "A later Deny also matches the target service path ($($later.Policy) $($later.Direction) in tier '$($later.Tier)'), but the earlier Allow is the first matching action for this path." }
             }
         }
     }
 
     if (-not $firstMatch -and $sourceEgressEnforcing.Count -gt 0) {
         $policyNames = @($sourceEgressEnforcing | Sort-Object -Unique)
-        $results += [PSCustomObject]@{ Check = 'Calico egress default-deny'; Status = 'FAIL'; Message = "Calico policy selects source pod '$($SourcePod.metadata.name)' for egress, but no Calico Allow/Pass rule obviously matches this target/port. Selecting policy/policies: $($policyNames -join ', ')." }
+        $results += [PSCustomObject]@{ Check = 'Calico target path egress default-deny'; Status = 'FAIL'; Message = "Calico policy selects source pod '$($SourcePod.metadata.name)' for egress, but no Calico Allow/Pass rule obviously matches the target service path/port. Selecting policy/policies: $($policyNames -join ', ')." }
         $diagnoses += "Primary issue: Calico policy selects source pod '$($SourcePod.metadata.namespace)/$($SourcePod.metadata.name)' for egress default-deny, but no egress Allow rule obviously permits service '$($TargetNamespace.metadata.name)/$($Service.metadata.name)'. Policies: $($policyNames -join ', ')."
     } elseif (-not $firstMatch -and $targetIngressEnforcing.Count -gt 0) {
         $policyNames = @($targetIngressEnforcing | Sort-Object -Unique)
-        $results += [PSCustomObject]@{ Check = 'Calico ingress default-deny'; Status = 'FAIL'; Message = "Calico policy selects target pod(s) for ingress, but no Calico Allow/Pass rule obviously matches this source/port. Selecting policy/policies: $($policyNames -join ', ')." }
+        $results += [PSCustomObject]@{ Check = 'Calico target path ingress default-deny'; Status = 'FAIL'; Message = "Calico policy selects target pod(s) for ingress, but no Calico Allow/Pass rule obviously matches this source/target service port. Selecting policy/policies: $($policyNames -join ', ')." }
         $diagnoses += "Primary issue: Calico policy selects target service pods in '$($TargetNamespace.metadata.name)' for ingress default-deny, but no ingress Allow rule obviously permits source pod '$($SourcePod.metadata.namespace)/$($SourcePod.metadata.name)'. Policies: $($policyNames -join ', ')."
     }
 
-    if ($sourceEgressEnforcing.Count -gt 0 -and $sourceDnsAllow.Count -eq 0) {
+    $dnsResolverAnalysis = Test-KubeNetCalicoDnsEgressPolicy -Policies $enforcedPolicies -NetworkSets $NetworkSets -Tiers $Tiers -SourcePod $SourcePod -ResolvSummary $SourceResolvSummary -CoreDnsPods $CoreDnsPods -NodeLocalDnsPods $NodeLocalDnsPods -KubeSystemNamespace $KubeSystemNamespace -CoreDnsServiceIp $CoreDnsServiceIp
+    $results += @($dnsResolverAnalysis.Results)
+    $diagnoses += @($dnsResolverAnalysis.Diagnoses)
+
+    if ($sourceEgressEnforcing.Count -gt 0 -and $sourceDnsAllow.Count -eq 0 -and -not $dnsResolverAnalysis.AnyBlocked -and -not $dnsResolverAnalysis.AnyDnsAllow) {
         $policyNames = @($sourceEgressEnforcing | Sort-Object -Unique)
         $status = if ($firstMatch -and $firstMatch.Action -eq 'Allow') { 'WARN' } else { 'INFO' }
         $results += [PSCustomObject]@{ Check = 'Calico DNS egress allow'; Status = $status; Message = "Calico policy selects source pod '$($SourcePod.metadata.name)' for egress, and no obvious DNS egress allow rule was found. DNS lookups may fail even if the target service is allowed. Selecting policy/policies: $($policyNames -join ', ')." }
@@ -616,7 +803,7 @@ function Test-KubeNetCalicoPolicyPath {
     }
 
     if ($results.Count -eq 0 -or @($results | Where-Object { $_.Check -match 'Calico' }).Count -eq 0) {
-        $results += [PSCustomObject]@{ Check = 'Calico policy path'; Status = 'PASS'; Message = 'No enforced Calico policy obviously blocks this source-to-target path.' }
+        $results += [PSCustomObject]@{ Check = 'Calico target service path'; Status = 'PASS'; Message = 'No enforced Calico policy obviously blocks this source-to-target service path.' }
     }
 
     [PSCustomObject]@{ Results = $results; Diagnoses = $diagnoses }
