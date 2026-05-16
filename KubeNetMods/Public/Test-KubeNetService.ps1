@@ -28,7 +28,7 @@ function Test-KubeNetService {
         [string]$TargetDnsPodName = '',
         [string]$TargetDnsContainer = '',
         [switch]$TestEgress,
-        [string[]]$EgressUrls = @('https://kubernetes.default.svc'),
+        [string[]]$EgressUrls = @(),
         [switch]$TestIngress,
         [string[]]$IngressUrls = @(),
         [switch]$TestLoadBalancer,
@@ -354,7 +354,7 @@ function Test-KubeNetService {
             Add-KubeNetResult -State $state -Layer 'EndpointSlice Layer' -Check 'endpoint slices' -Status 'SKIP' -Message 'Skipped because the target service does not exist.'
         }
 
-        Write-KubeNetSection -State $state -Name 'NetworkPolicy Layer' -Description 'Heuristically checks ingress/egress policies that may affect target/source pods.'
+        Write-KubeNetSection -State $state -Name 'Kubernetes NetworkPolicy Layer' -Description 'Checks native Kubernetes NetworkPolicy objects. Calico/Cilium CRDs are evaluated separately in the CNI Policy Layer.'
         foreach ($policyScope in @(
             [PSCustomObject]@{ Role = 'target'; Namespace = $Namespace; Context = $targetContextEffective; Pods = $selectedPods },
             [PSCustomObject]@{ Role = 'source'; Namespace = $sourceNamespaceEffective; Context = $sourceContextEffective; Pods = @() }
@@ -363,10 +363,10 @@ function Test-KubeNetService {
                 $policies = ConvertFrom-KubeNetJson -State $state -Context $policyScope.Context -Arguments @('get', 'networkpolicy', '-n', $policyScope.Namespace)
                 $items = @($policies.items)
                 if ($items.Count -eq 0) {
-                    Add-KubeNetResult -State $state -Layer 'NetworkPolicy Layer' -Check "$($policyScope.Role) policies" -Status 'INFO' -Message "No NetworkPolicies found in namespace '$($policyScope.Namespace)'."
+                    Add-KubeNetResult -State $state -Layer 'Kubernetes NetworkPolicy Layer' -Check "$($policyScope.Role) policies" -Status 'INFO' -Message "No native Kubernetes NetworkPolicy objects found in namespace '$($policyScope.Namespace)'."
                     continue
                 }
-                Add-KubeNetResult -State $state -Layer 'NetworkPolicy Layer' -Check "$($policyScope.Role) policies" -Status 'INFO' -Message "$($items.Count) NetworkPolicy object(s) found in namespace '$($policyScope.Namespace)'."
+                Add-KubeNetResult -State $state -Layer 'Kubernetes NetworkPolicy Layer' -Check "$($policyScope.Role) policies" -Status 'INFO' -Message "$($items.Count) native Kubernetes NetworkPolicy object(s) found in namespace '$($policyScope.Namespace)'."
                 $networkPolicyObjectCount += $items.Count
                 if ($policyScope.Role -eq 'source') {
                     $sourceNetworkPolicies = @($items)
@@ -384,23 +384,23 @@ function Test-KubeNetService {
                     }
                     if ($selectedPolicies.Count -gt 0) {
                         $names = @($selectedPolicies | ForEach-Object { $_.metadata.name }) -join ', '
-                        Add-KubeNetResult -State $state -Layer 'NetworkPolicy Layer' -Check 'target pod policies' -Status 'INFO' -Message "Target pod(s) are selected by NetworkPolicy: $names. Source-to-target allow rules are evaluated in NetworkPolicy Path Analysis when source pod metadata is available."
+                        Add-KubeNetResult -State $state -Layer 'Kubernetes NetworkPolicy Layer' -Check 'target pod policies' -Status 'INFO' -Message "Target pod(s) are selected by native Kubernetes NetworkPolicy: $names. Source-to-target allow rules are evaluated in Kubernetes NetworkPolicy Path Analysis when source pod metadata is available."
                     } else {
-                        Add-KubeNetResult -State $state -Layer 'NetworkPolicy Layer' -Check 'target pod policies' -Status 'PASS' -Message 'No NetworkPolicies appear to select the target pods.'
+                        Add-KubeNetResult -State $state -Layer 'Kubernetes NetworkPolicy Layer' -Check 'target pod policies' -Status 'PASS' -Message 'No native Kubernetes NetworkPolicy objects appear to select the target pods.'
                     }
                 }
                 $defaultDeny = @($items | Where-Object {
                     ($_.spec.podSelector.PSObject.Properties.Count -eq 0) -and ($_.spec.policyTypes -contains 'Ingress' -or $_.spec.policyTypes -contains 'Egress')
                 })
                 if ($defaultDeny.Count -gt 0) {
-                    Add-KubeNetResult -State $state -Layer 'NetworkPolicy Layer' -Check "$($policyScope.Role) default deny" -Status 'WARN' -Message "Namespace '$($policyScope.Namespace)' has broad/default-style NetworkPolicy: $((@($defaultDeny | ForEach-Object { $_.metadata.name }) -join ', '))."
+                    Add-KubeNetResult -State $state -Layer 'Kubernetes NetworkPolicy Layer' -Check "$($policyScope.Role) default deny" -Status 'WARN' -Message "Namespace '$($policyScope.Namespace)' has broad/default-style native Kubernetes NetworkPolicy: $((@($defaultDeny | ForEach-Object { $_.metadata.name }) -join ', '))."
                 }
             } catch {
-                Add-KubeNetResult -State $state -Layer 'NetworkPolicy Layer' -Check "$($policyScope.Role) policies" -Status 'WARN' -Message "Could not inspect NetworkPolicies in '$($policyScope.Namespace)': $($_.Exception.Message)"
+                Add-KubeNetResult -State $state -Layer 'Kubernetes NetworkPolicy Layer' -Check "$($policyScope.Role) policies" -Status 'WARN' -Message "Could not inspect native Kubernetes NetworkPolicy objects in '$($policyScope.Namespace)': $($_.Exception.Message)"
             }
         }
         if ($networkPolicyObjectCount -gt 0 -and $cniProviderGuess -match 'kindnet|Flannel') {
-            Add-KubeNetResult -State $state -Layer 'NetworkPolicy Layer' -Check 'CNI enforcement hint' -Status 'WARN' -Message "NetworkPolicy objects exist, but CNI/provider guess is '$cniProviderGuess'. Some CNIs, including kindnet and basic Flannel setups, do not enforce Kubernetes NetworkPolicy by themselves."
+            Add-KubeNetResult -State $state -Layer 'Kubernetes NetworkPolicy Layer' -Check 'CNI enforcement hint' -Status 'WARN' -Message "Native Kubernetes NetworkPolicy objects exist, but CNI/provider guess is '$cniProviderGuess'. Some CNIs, including kindnet and basic Flannel setups, do not enforce Kubernetes NetworkPolicy by themselves."
             Add-KubeNetDiagnosis -State $state -Message "NetworkPolicies are present, but the detected CNI/provider '$cniProviderGuess' may not enforce them. If traffic succeeds despite restrictive policies, verify the CNI's NetworkPolicy support."
         }
 
@@ -494,9 +494,9 @@ function Test-KubeNetService {
         }
 
         if (-not $SkipDebugPod) {
-            $targetDebugReady = Ensure-KubeNetDebugPod -State $state -Context $targetContextEffective -Namespace $Namespace -Name $TargetDebugPodName -Image $DebugImage -ImagePullPolicy $DebugImagePullPolicy -TimeoutSec $TimeoutSec -Layer 'Target Debug Pod'
+            $targetDebugReady = Ensure-KubeNetDebugPod -State $state -Context $targetContextEffective -Namespace $Namespace -Name $TargetDebugPodName -Image $DebugImage -ImagePullPolicy $DebugImagePullPolicy -TimeoutSec $TimeoutSec -Layer 'Target debug pod'
             if (-not $sourceIsTarget) {
-                $sourceDebugReady = Ensure-KubeNetDebugPod -State $state -Context $sourceContextEffective -Namespace $sourceNamespaceEffective -Name $SourceDebugPodName -Image $DebugImage -ImagePullPolicy $DebugImagePullPolicy -TimeoutSec $TimeoutSec -Layer 'Source Debug Pod'
+                $sourceDebugReady = Ensure-KubeNetDebugPod -State $state -Context $sourceContextEffective -Namespace $sourceNamespaceEffective -Name $SourceDebugPodName -Image $DebugImage -ImagePullPolicy $DebugImagePullPolicy -TimeoutSec $TimeoutSec -Layer 'Source debug pod'
             } else {
                 $sourceDebugReady = $targetDebugReady
             }
@@ -504,15 +504,15 @@ function Test-KubeNetService {
             Add-KubeNetResult -State $state -Layer 'Debug Pod' -Check 'debug pod' -Status 'SKIP' -Message 'Skipped by -SkipDebugPod.'
         }
 
-        Write-KubeNetSection -State $state -Name 'DNS And Service Routing Layer' -Description 'Tests service DNS and HTTP/TCP-ish reachability from target and source namespaces.'
+        Write-KubeNetSection -State $state -Name 'Target debug pod path' -Description 'Uses a debug pod in the target namespace to prove the target service/backend path independent of the source pod.'
         if ($service -and $targetDebugReady) {
             $urls = New-KubeNetServiceUrls -Service $service -ServiceName $ServiceName -Namespace $Namespace -ServicePort $ServicePort -UrlScheme $UrlScheme -UrlPath $UrlPath
             foreach ($name in @($ServiceName, "$ServiceName.$Namespace.svc.cluster.local")) {
                 $dns = Invoke-KubeNetInPod -State $state -Context $targetContextEffective -Namespace $Namespace -PodName $TargetDebugPodName -Command "nslookup $name"
                 if ($dns.ExitCode -eq 0) {
-                    Add-KubeNetResult -State $state -Layer 'DNS And Service Routing Layer' -Check "target resolve $name" -Status 'PASS' -Message "Target debug pod resolved '$name'."
+                    Add-KubeNetResult -State $state -Layer 'Target debug pod path' -Check "target debug pod resolve $name" -Status 'PASS' -Message "Target debug pod '$TargetDebugPodName' resolved '$name'."
                 } else {
-                    Add-KubeNetResult -State $state -Layer 'DNS And Service Routing Layer' -Check "target resolve $name" -Status 'FAIL' -Message "Target debug pod could not resolve '$name'."
+                    Add-KubeNetResult -State $state -Layer 'Target debug pod path' -Check "target debug pod resolve $name" -Status 'FAIL' -Message "Target debug pod '$TargetDebugPodName' could not resolve '$name'."
                     Add-KubeNetDiagnosis -State $state -Message "Cluster DNS failed for '$name' from namespace '$Namespace'. Check CoreDNS, service name/namespace, and DNS policy."
                 }
             }
@@ -522,13 +522,13 @@ function Test-KubeNetService {
                 [PSCustomObject]@{ Name = 'ClusterIP URL'; Url = $urls.ClusterIp }
             ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_.Url) }) {
                 if ($servicePortMissing) {
-                    Add-KubeNetResult -State $state -Layer 'DNS And Service Routing Layer' -Check $target.Name -Status 'SKIP' -Message "Skipped because service port $ServicePort is not exposed."
+                    Add-KubeNetResult -State $state -Layer 'Target debug pod path' -Check $target.Name -Status 'SKIP' -Message "Skipped because service port $ServicePort is not exposed."
                 } else {
                     $curl = Invoke-KubeNetInPod -State $state -Context $targetContextEffective -Namespace $Namespace -PodName $TargetDebugPodName -Command "curl -k -sS -o /dev/null -w 'HTTP_STATUS=%{http_code}' --connect-timeout $TimeoutSec --max-time $TimeoutSec '$($target.Url)'"
                     if ($curl.ExitCode -eq 0) {
-                        Add-KubeNetResult -State $state -Layer 'DNS And Service Routing Layer' -Check $target.Name -Status 'PASS' -Message "$($target.Url) reachable from target debug pod. HTTP status: $(Get-KubeNetHttpStatusFromText $curl.Text)"
+                        Add-KubeNetResult -State $state -Layer 'Target debug pod path' -Check $target.Name -Status 'PASS' -Message "$($target.Url) reachable from target debug pod '$TargetDebugPodName'. HTTP status: $(Get-KubeNetHttpStatusFromText $curl.Text)"
                     } else {
-                        Add-KubeNetResult -State $state -Layer 'DNS And Service Routing Layer' -Check $target.Name -Status 'FAIL' -Message "$($target.Url) failed from target debug pod."
+                        Add-KubeNetResult -State $state -Layer 'Target debug pod path' -Check $target.Name -Status 'FAIL' -Message "$($target.Url) failed from target debug pod '$TargetDebugPodName'."
                     }
                 }
             }
@@ -545,9 +545,9 @@ function Test-KubeNetService {
             try {
                 $sourcePodObject = ConvertFrom-KubeNetJson -State $state -Context $sourceContextEffective -Arguments @('get', 'pod', $SourcePodName, '-n', $sourceNamespaceEffective)
             } catch {
-                Add-KubeNetResult -State $state -Layer 'Cross-Namespace Layer' -Check 'source pod' -Status 'WARN' -Message "Could not read supplied source pod '$SourcePodName': $($_.Exception.Message)"
+                Add-KubeNetResult -State $state -Layer 'Source pod path' -Check 'source pod' -Status 'WARN' -Message "Could not read supplied source pod '$SourcePodName': $($_.Exception.Message)"
             }
-            Add-KubeNetResult -State $state -Layer 'Cross-Namespace Layer' -Check 'source exec target' -Status 'INFO' -Message "Using supplied source pod '$SourcePodName' in namespace '$sourceNamespaceEffective' for source-to-target checks."
+            Add-KubeNetResult -State $state -Layer 'Source pod path' -Check 'source pod selected' -Status 'INFO' -Message "Using supplied source pod '$SourcePodName' in namespace '$sourceNamespaceEffective' for source-to-target checks."
         } elseif (-not [string]::IsNullOrWhiteSpace($SourcePodSelector)) {
             try {
                 $sourcePods = ConvertFrom-KubeNetJson -State $state -Context $sourceContextEffective -Arguments @('get', 'pods', '-n', $sourceNamespaceEffective, '-l', $SourcePodSelector)
@@ -557,12 +557,12 @@ function Test-KubeNetService {
                     $sourceExecContainer = $SourceContainer
                     $sourcePodObject = $sourceReadyPods[0]
                     $usingSelectedSourcePod = $true
-                    Add-KubeNetResult -State $state -Layer 'Cross-Namespace Layer' -Check 'source exec target' -Status 'INFO' -Message "Using source pod '$sourceExecPodName' selected by '$SourcePodSelector' for source-to-target checks."
+                    Add-KubeNetResult -State $state -Layer 'Source pod path' -Check 'source pod selected' -Status 'INFO' -Message "Using source pod '$sourceExecPodName' selected by '$SourcePodSelector' for source-to-target checks."
                 } else {
-                    Add-KubeNetResult -State $state -Layer 'Cross-Namespace Layer' -Check 'source exec target' -Status 'WARN' -Message "No running Ready source pod matched selector '$SourcePodSelector'. Falling back to source debug pod when available."
+                    Add-KubeNetResult -State $state -Layer 'Source pod path' -Check 'source pod selected' -Status 'WARN' -Message "No running Ready source pod matched selector '$SourcePodSelector'. Falling back to source debug pod when available."
                 }
             } catch {
-                Add-KubeNetResult -State $state -Layer 'Cross-Namespace Layer' -Check 'source exec target' -Status 'WARN' -Message "Could not select source pod with selector '$SourcePodSelector': $($_.Exception.Message)"
+                Add-KubeNetResult -State $state -Layer 'Source pod path' -Check 'source pod selected' -Status 'WARN' -Message "Could not select source pod with selector '$SourcePodSelector': $($_.Exception.Message)"
             }
         }
 
@@ -571,7 +571,7 @@ function Test-KubeNetService {
             try {
                 $sourcePodObject = ConvertFrom-KubeNetJson -State $state -Context $sourceContextEffective -Arguments @('get', 'pod', $sourceExecPodName, '-n', $sourceNamespaceEffective)
             } catch {
-                Add-KubeNetResult -State $state -Layer 'Source DNS Policy Layer' -Check 'source pod metadata' -Status 'WARN' -Message "Could not read source exec pod '$sourceExecPodName': $($_.Exception.Message)"
+                Add-KubeNetResult -State $state -Layer 'Source DNS Policy Layer' -Check 'source pod metadata' -Status 'WARN' -Message "Could not read source pod '$sourceExecPodName': $($_.Exception.Message)"
             }
         }
 
@@ -646,16 +646,16 @@ function Test-KubeNetService {
         }
 
         if ($service -and $sourceCanExec) {
-            Write-KubeNetSection -State $state -Name 'NetworkPolicy Path Analysis' -Description 'Compares source egress and target ingress policies against this specific source-to-service path.'
+            Write-KubeNetSection -State $state -Name 'Kubernetes NetworkPolicy Path Analysis' -Description 'Compares native Kubernetes NetworkPolicy source egress and target ingress rules against this specific source-to-service path.'
             $pathPolicy = Test-KubeNetNetworkPolicyPath -SourcePod $sourcePodObject -SourceNamespace $sourceNamespaceObject -TargetPods $selectedPods -TargetNamespace $targetNamespaceObject -SourceNetworkPolicies $sourceNetworkPolicies -TargetNetworkPolicies $targetNetworkPolicies -Service $service -ServicePortObject $selectedServicePort -ContainerPorts $containerPorts
             foreach ($pathResult in @($pathPolicy.Results)) {
-                Add-KubeNetResult -State $state -Layer 'NetworkPolicy Path Analysis' -Check $pathResult.Check -Status $pathResult.Status -Message $pathResult.Message
+                Add-KubeNetResult -State $state -Layer 'Kubernetes NetworkPolicy Path Analysis' -Check $pathResult.Check -Status $pathResult.Status -Message $pathResult.Message
             }
             foreach ($diagnosis in @($pathPolicy.Diagnoses)) {
                 Add-KubeNetDiagnosis -State $state -Message $diagnosis
             }
 
-            Write-KubeNetSection -State $state -Name 'CNI Policy Layer' -Description 'Checks common CNI-specific policy CRDs for explicit denies on this path.'
+            Write-KubeNetSection -State $state -Name 'CNI Policy Layer' -Description 'Checks Calico/Cilium policy CRDs separately from native Kubernetes NetworkPolicy.'
             $cniPolicy = Test-KubeNetCniSpecificPolicyPath -State $state -Context $targetContextEffective -CniProviderGuess $cniProviderGuess -SourcePod $sourcePodObject -SourceNamespace $sourceNamespaceObject -TargetPods $selectedPods -TargetNamespace $targetNamespaceObject -Service $service -ServicePortObject $selectedServicePort -ContainerPorts $containerPorts
             foreach ($cniResult in @($cniPolicy.Results)) {
                 Add-KubeNetResult -State $state -Layer 'CNI Policy Layer' -Check $cniResult.Check -Status $cniResult.Status -Message $cniResult.Message
@@ -663,6 +663,23 @@ function Test-KubeNetService {
             foreach ($diagnosis in @($cniPolicy.Diagnoses)) {
                 Add-KubeNetDiagnosis -State $state -Message $diagnosis
             }
+
+            $nativePolicyFail = @($pathPolicy.Results | Where-Object { $_.Status -eq 'WARN' -and $_.Message -match 'no rule obviously allows|may block' })
+            $nativePolicyPass = @($pathPolicy.Results | Where-Object { $_.Status -eq 'PASS' })
+            $cniPolicyFail = @($cniPolicy.Results | Where-Object { $_.Status -eq 'FAIL' })
+            $cniPolicyPass = @($cniPolicy.Results | Where-Object { $_.Status -eq 'PASS' })
+            $combinedStatus = 'INFO'
+            $combinedMessage = "Native Kubernetes NetworkPolicy and CNI-specific policy checks were both evaluated. Native result: unknown. CNI result: $($cniPolicy.Summary)"
+            if ($nativePolicyFail.Count -gt 0 -or $cniPolicyFail.Count -gt 0) {
+                $combinedStatus = 'FAIL'
+                $nativeText = if ($nativePolicyFail.Count -gt 0) { 'native Kubernetes NetworkPolicy may block this path' } elseif ($nativePolicyPass.Count -gt 0) { 'native Kubernetes NetworkPolicy does not appear to block this path' } else { 'native Kubernetes NetworkPolicy result unknown' }
+                $cniText = if ($cniPolicyFail.Count -gt 0) { 'CNI-specific policy blocks or likely blocks this path' } elseif ($cniPolicyPass.Count -gt 0) { 'CNI-specific policy does not appear to block this path' } else { 'CNI-specific policy result unknown' }
+                $combinedMessage = "Combined policy result: blocked or likely blocked. $nativeText; $cniText."
+            } elseif ($nativePolicyPass.Count -gt 0 -or $cniPolicyPass.Count -gt 0) {
+                $combinedStatus = 'PASS'
+                $combinedMessage = "Combined policy result: no policy block inferred for the tested source-to-target path. Native Kubernetes NetworkPolicy path checks passed or found no isolation; $($cniPolicy.Summary)"
+            }
+            Add-KubeNetResult -State $state -Layer 'Combined Policy Summary' -Check 'effective policy interpretation' -Status $combinedStatus -Message $combinedMessage
         }
 
         if ($selectedPods.Count -gt 0 -and ($targetDebugReady -or $sourceCanExec)) {
@@ -680,7 +697,7 @@ function Test-KubeNetService {
                 $directSources = @()
                 if ($targetDebugReady) {
                     $directSources += [PSCustomObject]@{
-                        Name      = 'target debug pod'
+                        Name      = "target debug pod '$TargetDebugPodName'"
                         Context   = $targetContextEffective
                         Namespace = $Namespace
                         PodName   = $TargetDebugPodName
@@ -689,7 +706,7 @@ function Test-KubeNetService {
                 }
                 if ($sourceCanExec -and (-not $targetDebugReady -or $sourceExecPodName -ne $TargetDebugPodName -or $sourceNamespaceEffective -ne $Namespace)) {
                     $directSources += [PSCustomObject]@{
-                        Name      = 'source exec pod'
+                        Name      = if ($usingSuppliedSourcePod -or $usingSelectedSourcePod) { "source pod '$sourceExecPodName'" } else { "source debug pod '$sourceExecPodName'" }
                         Context   = $sourceContextEffective
                         Namespace = $sourceNamespaceEffective
                         PodName   = $sourceExecPodName
@@ -727,16 +744,16 @@ function Test-KubeNetService {
             $targetUrl = "$UrlScheme`://$targetFqdn`:$targetPort$(Get-KubeNetUrlPath -UrlPath $UrlPath)"
             $fqdnDns = Invoke-KubeNetInPod -State $state -Context $sourceContextEffective -Namespace $sourceNamespaceEffective -PodName $sourceExecPodName -Container $sourceExecContainer -Command "nslookup $targetFqdn"
             if ($fqdnDns.ExitCode -eq 0) {
-                Add-KubeNetResult -State $state -Layer 'Cross-Namespace Layer' -Check 'source resolve target FQDN' -Status 'PASS' -Message "Source namespace '$sourceNamespaceEffective' resolved '$targetFqdn'."
+                Add-KubeNetResult -State $state -Layer 'Source pod path' -Check 'source pod resolve target FQDN' -Status 'PASS' -Message "Source pod path in namespace '$sourceNamespaceEffective' resolved '$targetFqdn' using pod '$sourceExecPodName'."
             } else {
-                Add-KubeNetResult -State $state -Layer 'Cross-Namespace Layer' -Check 'source resolve target FQDN' -Status 'FAIL' -Message "Source namespace '$sourceNamespaceEffective' could not resolve '$targetFqdn'."
+                Add-KubeNetResult -State $state -Layer 'Source pod path' -Check 'source pod resolve target FQDN' -Status 'FAIL' -Message "Source pod path in namespace '$sourceNamespaceEffective' could not resolve '$targetFqdn' using pod '$sourceExecPodName'."
                 Add-KubeNetDiagnosis -State $state -Message "Source namespace '$sourceNamespaceEffective' cannot resolve target service FQDN '$targetFqdn'. Check source pod DNS policy, CoreDNS, and NetworkPolicy allowing DNS egress."
             }
             $sourceCurl = Invoke-KubeNetInPod -State $state -Context $sourceContextEffective -Namespace $sourceNamespaceEffective -PodName $sourceExecPodName -Container $sourceExecContainer -Command "curl -k -sS -o /dev/null -w 'HTTP_STATUS=%{http_code}' --connect-timeout $TimeoutSec --max-time $TimeoutSec '$targetUrl'"
             if ($sourceCurl.ExitCode -eq 0) {
-                Add-KubeNetResult -State $state -Layer 'Cross-Namespace Layer' -Check 'source curl target FQDN' -Status 'PASS' -Message "$targetUrl reachable from source namespace '$sourceNamespaceEffective'. HTTP status: $(Get-KubeNetHttpStatusFromText $sourceCurl.Text)"
+                Add-KubeNetResult -State $state -Layer 'Source pod path' -Check 'source pod curl target FQDN' -Status 'PASS' -Message "$targetUrl reachable from source pod path using pod '$sourceExecPodName'. HTTP status: $(Get-KubeNetHttpStatusFromText $sourceCurl.Text)"
             } else {
-                Add-KubeNetResult -State $state -Layer 'Cross-Namespace Layer' -Check 'source curl target FQDN' -Status 'FAIL' -Message "$targetUrl failed from source namespace '$sourceNamespaceEffective'."
+                Add-KubeNetResult -State $state -Layer 'Source pod path' -Check 'source pod curl target FQDN' -Status 'FAIL' -Message "$targetUrl failed from source pod path using pod '$sourceExecPodName' in namespace '$sourceNamespaceEffective'."
                 if (-not $targetHasReadyEndpoints) {
                     Add-KubeNetDiagnosis -State $state -Message "Source-to-target connection failed, but the target service has no ready endpoints. Fix target workload/readiness before debugging source namespace policy."
                 } else {
@@ -823,14 +840,17 @@ function Test-KubeNetService {
         }
 
         if ($TestEgress -and $sourceCanExec) {
-            Write-KubeNetSection -State $state -Name 'Egress Layer' -Description 'Tests outbound DNS/HTTP reachability from the source namespace debug pod.'
+            Write-KubeNetSection -State $state -Name 'Egress Layer' -Description 'Tests optional outbound URLs from the source pod when supplied, otherwise from the source debug pod.'
+            if (-not $EgressUrls -or $EgressUrls.Count -eq 0) {
+                Add-KubeNetResult -State $state -Layer 'Egress Layer' -Check 'egress targets' -Status 'SKIP' -Message 'No -EgressUrls were supplied.'
+            }
             foreach ($target in $EgressUrls) {
                 $curl = Invoke-KubeNetInPod -State $state -Context $sourceContextEffective -Namespace $sourceNamespaceEffective -PodName $sourceExecPodName -Container $sourceExecContainer -Command "curl -k -sS -o /dev/null -w 'HTTP_STATUS=%{http_code}' --connect-timeout $TimeoutSec --max-time $TimeoutSec '$target'"
                 if ($curl.ExitCode -eq 0) {
-                    Add-KubeNetResult -State $state -Layer 'Egress Layer' -Check $target -Status 'PASS' -Message "Source namespace reached '$target'. HTTP status: $(Get-KubeNetHttpStatusFromText $curl.Text)"
+                    Add-KubeNetResult -State $state -Layer 'Egress Layer' -Check $target -Status 'PASS' -Message "Source path using pod '$sourceExecPodName' reached '$target'. HTTP status: $(Get-KubeNetHttpStatusFromText $curl.Text)"
                 } else {
-                    Add-KubeNetResult -State $state -Layer 'Egress Layer' -Check $target -Status 'FAIL' -Message "Source namespace could not reach '$target'."
-                    Add-KubeNetDiagnosis -State $state -Message "Egress test to '$target' failed from namespace '$sourceNamespaceEffective'. Check egress NetworkPolicy, DNS, firewall, NAT gateway, proxy, or cloud security controls."
+                    Add-KubeNetResult -State $state -Layer 'Egress Layer' -Check $target -Status 'FAIL' -Message "Source path using pod '$sourceExecPodName' could not reach optional egress target '$target'. This may be unrelated to the target service path."
+                    Add-KubeNetDiagnosis -State $state -Message "Optional egress test to '$target' failed from source path using pod '$sourceExecPodName'. This may be unrelated to target service reachability; check egress policy, DNS, firewall, NAT gateway, proxy, or cloud security controls if that outbound target is required."
                 }
             }
         }

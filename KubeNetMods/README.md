@@ -2,7 +2,7 @@
 
 KubeNetMods is an experimental PowerShell module for Kubernetes network and network-adjacent troubleshooting.
 
-It starts with a target Kubernetes Service and works outward through the path around it: cluster access, nodes, DNS, Service, EndpointSlice, pods, NetworkPolicy, Ingress, NodePort, LoadBalancer, source-to-target reachability, pod-side MTU/route snapshots, and recent events.
+It starts with a target Kubernetes Service and checks the network path around it: cluster and namespace access, node/core add-on health, Service and EndpointSlice mapping, target pod health, DNS, native Kubernetes NetworkPolicy, Calico/Cilium policy hints, Ingress, NodePort, LoadBalancer/external reachability, source-to-target tests, pod-side MTU/route snapshots, recent events, and optional alert-driven triage.
 
 The goal is simple:
 
@@ -35,14 +35,27 @@ Report statuses:
 
 The `Diagnosis` section is filtered so downstream symptoms do not drown out the clearest likely cause.
 
+## What It Checks
+
+| Area | What KubeNetMods Checks |
+|---|---|
+| Cluster access | `kubectl` access, target/source namespace access, node readiness, and common node pressure/network conditions. |
+| Core networking | CNI add-on pod health, CoreDNS pod health, kube-dns Service IP, CoreDNS Corefile basics, kube-proxy pod health. |
+| Target Service | Service existence, type, ClusterIP, port, `targetPort`, selector, selected backend pods, pod readiness, and EndpointSlice readiness/ports. |
+| Target baseline | DNS and HTTP from a target debug pod to the target Service, ClusterIP, and target pod IPs. This answers: "does the target side work from its own namespace?" |
+| Source path | DNS and HTTP from a source pod, selected source pod, or source debug pod to the target Service FQDN and target pod IPs. This answers: "can this client side reach the target?" |
+| DNS | Source pod resolver data, target workload DNS checks when requested, `/etc/resolv.conf`, `dnsPolicy`, `hostNetwork`, search domains, CoreDNS/NodeLocalDNS policy hints. |
+| Native Kubernetes NetworkPolicy | Source egress isolation, target ingress isolation, DNS egress hints, and likely source-to-target allow/block interpretation for standard Kubernetes `NetworkPolicy`. |
+| CNI-specific policy | Extra Calico/Cilium policy analysis when those provider CRDs are present and readable. Depth varies by provider. |
+| Ingress | Ingress objects pointing to the target Service, backend service port/name, TLS secret existence, IngressClass existence, controller pod hints, optional external URL checks. |
+| NodePort/LoadBalancer | NodePort inside-cluster and host reachability, LoadBalancer status addresses, optional explicit external URL checks. |
+| Snapshots | Pod-side MTU and route snapshots from exec-capable pods, plus source/target `eth0` MTU comparison when available. These are snapshots, not full packet-size path-MTU tests. |
+| Events | Recent Warning events in target/source namespaces. |
+| Alerts | Best-effort alert normalization, network-scope classification, parameter planning, and optional triage run. |
+
 ## CNI-Specific Policy Analysis
 
 KubeNetMods includes a `CNI Policy Layer` for common Calico and Cilium policy behavior.
-
-| Provider | Current checks |
-|---|---|
-| Cilium | `CiliumNetworkPolicy`, `CiliumClusterwideNetworkPolicy`, `egressDeny`, `ingressDeny`, endpoint selectors, namespace labels, target port matching, source egress default-deny, target ingress default-deny, and missing DNS egress allow hints. |
-| Calico | Calico `NetworkPolicy`, `GlobalNetworkPolicy`, explicit `Deny`, ordered `Allow` before later `Deny`, namespace selectors, pod selectors, target port matching, source egress default-deny, target ingress default-deny, and missing DNS egress allow hints. |
 
 This layer does not replace native CNI tools. It is meant to answer:
 
@@ -50,34 +63,58 @@ This layer does not replace native CNI tools. It is meant to answer:
 Does a common Cilium or Calico policy pattern obviously explain this failing path?
 ```
 
-## What It Can Do
+### Calico Coverage
 
-| Area | Checks |
-|---|---|
-| Cluster access | `kubectl` access, namespace existence, node readiness, common node pressure/network conditions. |
-| Core networking | CNI/CoreDNS/kube-proxy pod health, CoreDNS service IP, Corefile basics. |
-| Service path | Service type, ClusterIP, selector, ports, `targetPort`, selected pod health, EndpointSlice readiness. |
-| Runtime reachability | DNS and HTTP from debug pods, source workload pods, direct pod IP, Service FQDN, NodePort, optional port-forward. |
-| DNS | Pod DNS settings, `/etc/resolv.conf`, `dnsPolicy`, `dnsConfig`, `hostNetwork`, NodeLocalDNS/link-local resolver cases. |
-| NetworkPolicy | Source egress, target ingress, DNS egress, CNI enforcement hints, and basic Calico/Cilium deny/default-deny analysis. |
-| Ingress | Ingress routes to the Service, backend port/name, TLS secret, IngressClass, controller pod hints, optional URL tests. |
-| LoadBalancer/external | LoadBalancer addresses, provider hints, optional explicit external URL tests. |
-| Snapshots | Pod-side MTU and route snapshots, plus source/target `eth0` MTU comparison when available. |
-| Alerts | Best-effort alert normalization, scope classification, parameter planning, and optional triage run. |
+Calico currently has the deeper provider-specific analyzer.
+
+It can inspect:
+
+- Calico `NetworkPolicy` and `GlobalNetworkPolicy`
+- staged policy visibility for `StagedNetworkPolicy` and `StagedGlobalNetworkPolicy`
+- tier order and ordered first-match behavior
+- `Allow`, `Deny`, `Pass`, and `Log` actions
+- source egress default-deny and target ingress default-deny
+- missing DNS egress allow hints
+- namespace selectors, pod selectors, and common selector operators
+- numeric ports, named ports, port ranges, and protocol matching
+- `notSelector`, `notPorts`, `nets`, `notNets`
+- destination `services` matches
+- `NetworkSet` and `GlobalNetworkSet`
+- cases where a later Deny matches but an earlier Allow wins
+
+Calico analysis is still heuristic. It does not fully emulate workload profiles after `Pass`, every tier/default-action edge case, service account selectors, pre-DNAT policy, host endpoint policy, every selector expression, or live dataplane state.
+
+### Cilium Coverage
+
+Cilium analysis is currently shallower than Calico.
+
+It can inspect:
+
+- `CiliumNetworkPolicy` and `CiliumClusterwideNetworkPolicy`
+- `endpointSelector`
+- `toEndpoints` and `fromEndpoints`
+- basic namespace-label matching
+- `egressDeny` and `ingressDeny`
+- source egress default-deny and target ingress default-deny
+- target port matching through `toPorts`
+- common DNS egress allow hints
+- simple `toEntities` / `fromEntities` cases such as `all` and `cluster`
+- basic `toCIDR` / `fromCIDR` matches against target/source IPs
+
+Cilium analysis does not fully emulate Cilium identity resolution, FQDN policies, service-aware policy behavior, L7 HTTP/Kafka/DNS policy, `toServices`, `toGroups`, advanced entities, every selector form, eBPF dataplane state, or Hubble flow history.
 
 ## What It Cannot Do Yet
 
 - It does not inspect Gateway API resources.
 - It does not deeply understand service mesh config such as Istio, Linkerd, or Consul.
-- It does not run provider-specific CNI dataplane commands.
+- It does not run provider-specific dataplane commands such as `cilium monitor`, `cilium policy trace`, `calicoctl`, or Felix/BPF inspection.
 - It does not deeply inspect kube-proxy iptables, IPVS, or eBPF state.
 - It does not perform path-MTU discovery, packet-size probing, or DF-bit testing.
 - It does not inspect node route tables or cloud route tables.
 - It does not call AWS, Azure, or GCP APIs.
 - It does not prove country/region edge-provider outages unless they appear through explicit external URL tests.
 - It does not validate application auth or business logic. HTTP checks focus on reachability.
-- NetworkPolicy analysis is heuristic. Complex selectors, tiers, service mesh policies, generated policies, and provider-specific dataplane state may still need human review.
-- Calico/Cilium analysis currently focuses on common policy shapes. It does not fully emulate every selector, tier, identity, FQDN, entity, or eBPF dataplane decision.
+- NetworkPolicy analysis is heuristic. Generated policies, admission-mutated policies, service mesh policies, and provider-specific dataplane state may still need human review.
 - Alert normalization is best-effort because alert platforms and teams use different label/tag names.
 
 ## Safety
@@ -95,6 +132,13 @@ Use `-SkipDebugPod` for read-mostly inspection.
 
 ## Parameters
 
+### Source And Target Terms
+
+`target` means the Service/backend you are troubleshooting.
+`source` means where the client connection starts.
+
+If you do not provide a source namespace or pod, KubeNetMods starts from the target namespace and uses debug pods for baseline checks. If you provide `-SourcePodName` or `-SourcePodSelector`, source-side DNS, policy, and curl checks run from that source pod instead.
+
 ### Target
 
 | Parameter | Default | Purpose |
@@ -105,7 +149,7 @@ Use `-SkipDebugPod` for read-mostly inspection.
 | `-ServicePort` | `0` | Service port to test. Uses the first Service port when omitted. |
 | `-UrlScheme` | `http` | URL scheme for curl/HTTP checks. |
 | `-UrlPath` | `/` | HTTP path used for curl checks. |
-| `-TargetPodSelector` | empty | Override target pod selector. |
+| `-TargetPodSelector` | empty | Override which backend pods belong to the target Service. |
 | `-TargetContext` | current | kubectl context for the target cluster. |
 
 ### Source
@@ -114,9 +158,9 @@ Use `-SkipDebugPod` for read-mostly inspection.
 |---|---:|---|
 | `-SourceNamespace` | target namespace | Namespace to test from. |
 | `-SourceContext` | target context | kubectl context for source checks. |
-| `-SourcePodName` | empty | Actual source pod to exec into. |
-| `-SourcePodSelector` | empty | Select a source pod by labels. |
-| `-SourceContainer` | empty | Container name for source pod exec. |
+| `-SourcePodName` | empty | Source workload pod to exec into for source-side checks. |
+| `-SourcePodSelector` | empty | Select a source workload pod by labels. |
+| `-SourceContainer` | empty | Container name when execing into a source workload pod. |
 
 ### Debug Pods
 
@@ -124,26 +168,26 @@ Use `-SkipDebugPod` for read-mostly inspection.
 |---|---:|---|
 | `-DebugImage` | `nicolaka/netshoot:latest` | Debug pod image. |
 | `-DebugImagePullPolicy` | `IfNotPresent` | Pull policy for temporary debug pods. |
-| `-TargetDebugPodName` | `kubenetmods-debug` | Target namespace debug pod name. |
-| `-SourceDebugPodName` | `kubenetmods-source-debug` | Source namespace debug pod name. |
-| `-SkipDebugPod` | false | Skip checks that create or exec into debug pods. |
+| `-TargetDebugPodName` | `kubenetmods-debug` | Name for the debug pod created in the target namespace. |
+| `-SourceDebugPodName` | `kubenetmods-source-debug` | Name for the debug pod created in the source namespace. |
+| `-SkipDebugPod` | false | Skip checks that create or exec into debug pods. Provide a source pod if you still want source-side exec checks. |
 
 ### Optional Checks
 
 | Parameter | Default | Purpose |
 |---|---:|---|
-| `-TestTargetPodDns` | false | Exec into target workload pod for DNS checks. |
-| `-TargetDnsPodName` | empty | Target workload pod for `-TestTargetPodDns`. |
-| `-TargetDnsContainer` | empty | Container for target workload DNS exec. |
+| `-TestTargetPodDns` | false | Exec into a target workload pod for target-side DNS checks. Source-side DNS is checked separately when a source pod/debug pod can be used. |
+| `-TargetDnsPodName` | empty | Specific target workload pod for `-TestTargetPodDns`. Defaults to a selected ready target pod. |
+| `-TargetDnsContainer` | empty | Container name when execing into the target workload pod for DNS checks. |
 | `-TestEgress` | false | Test egress from source namespace/pod. |
-| `-EgressUrls` | `https://kubernetes.default.svc` | URLs for egress checks. |
+| `-EgressUrls` | empty | URLs for egress checks. No outbound URL curl is run unless at least one URL is supplied. |
 | `-TestIngress` | false | Test explicit Ingress URLs when supplied. Static Ingress discovery runs when Ingresses exist. |
 | `-IngressUrls` | empty | Explicit Ingress URLs to test from local host. |
 | `-TestLoadBalancer` | false | Inspect/test LoadBalancer service external paths. |
 | `-ExternalUrls` | empty | Explicit external URLs to test from local host. |
 | `-TestPortForward` | false | Run `kubectl port-forward` validation. |
 | `-SkipNodePort` | false | Skip NodePort/host reachability checks. |
-| `-Deep` | false | Enables `-TestTargetPodDns`, `-TestEgress`, `-TestIngress`, and `-TestLoadBalancer`. |
+| `-Deep` | false | Enables deeper DNS, egress, ingress, and load-balancer checks. Egress URL tests still require `-EgressUrls`. |
 
 ### Output
 
@@ -181,7 +225,7 @@ Test-KubeNetService `
   -ExportJson .\api-net.json
 ```
 
-Run deeper optional checks:
+Run deeper optional checks. Egress URL curls only run when `-EgressUrls` is supplied.
 
 ```powershell
 Test-KubeNetService `
@@ -253,9 +297,9 @@ This tests the target Service and source-side DNS/reachability against:
 postgres.database.svc.cluster.local
 ```
 
-### Test From The Real Source Pod
+### Test From A Source Pod
 
-Use a real source pod when labels, DNS policy, sidecars, service accounts, or NetworkPolicies may differ from a generic debug pod.
+Use a source pod when labels, DNS policy, sidecars, service accounts, or NetworkPolicies may differ from a generic debug pod.
 
 ```powershell
 Test-KubeNetService `
@@ -370,11 +414,7 @@ Sample HTML and JSON reports are in [`examples/reports`](./examples/reports).
 
 | Report | Scenario |
 |---|---|
-| [`cross-namespace-smoke.html`](./examples/reports/cross-namespace-smoke.html) | Healthy cross-namespace service path. |
-| [`dns-policy-nodelocal.html`](./examples/reports/dns-policy-nodelocal.html) | Source pod uses NodeLocalDNS/link-local resolver, but policy only allows CoreDNS pods. |
-| [`target-ingress-policy-block.html`](./examples/reports/target-ingress-policy-block.html) | Static target ingress policy warning while runtime curl passes. |
-| [`ingress-misconfig.html`](./examples/reports/ingress-misconfig.html) | Deterministic Ingress config failures. |
-| [`wrong-targetport-direct-pod.html`](./examples/reports/wrong-targetport-direct-pod.html) | Direct pod IP works, but Service routing fails because `targetPort` is wrong. |
+| [`calico-tier-pass-to-deny.html`](./examples/reports/calico-tier-pass-to-deny.html) | Calico tier ordering where a `Pass` in one tier continues to a later tier that denies the path. |
 
 Sample alert payloads are in [`examples/alerts`](./examples/alerts).
 
@@ -382,6 +422,7 @@ Sample alert payloads are in [`examples/alerts`](./examples/alerts).
 |---|---|
 | [`alertmanager-dns-timeout.json`](./examples/alerts/alertmanager-dns-timeout.json) | Network-relevant DNS timeout with enough metadata to run. |
 | [`grafana-ingress-backend.json`](./examples/alerts/grafana-ingress-backend.json) | Network-relevant Ingress/backend alert. |
+| [`generic-egress-timeout.json`](./examples/alerts/generic-egress-timeout.json) | Network-relevant egress timeout with an external URL to test. |
 | [`datadog-http-401.json`](./examples/alerts/datadog-http-401.json) | Out-of-scope application-auth alert. |
 | [`generic-missing-service.json`](./examples/alerts/generic-missing-service.json) | Network-looking alert missing target Service metadata. |
 

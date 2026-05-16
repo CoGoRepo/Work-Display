@@ -81,8 +81,14 @@ function Test-KubeNetCniSpecificPolicyPath {
     $calicoPolicies = @()
     $calicoPolicies += Get-KubeNetOptionalJsonList -State $State -Context $Context -Arguments @('get', 'networkpolicies.crd.projectcalico.org', '-A', '-o', 'json')
     $calicoPolicies += Get-KubeNetOptionalJsonList -State $State -Context $Context -Arguments @('get', 'globalnetworkpolicies.crd.projectcalico.org', '-o', 'json')
+    $calicoPolicies += Get-KubeNetOptionalJsonList -State $State -Context $Context -Arguments @('get', 'stagednetworkpolicies.crd.projectcalico.org', '-A', '-o', 'json')
+    $calicoPolicies += Get-KubeNetOptionalJsonList -State $State -Context $Context -Arguments @('get', 'stagedglobalnetworkpolicies.crd.projectcalico.org', '-o', 'json')
+    $calicoNetworkSets = @()
+    $calicoNetworkSets += Get-KubeNetOptionalJsonList -State $State -Context $Context -Arguments @('get', 'networksets.crd.projectcalico.org', '-A', '-o', 'json')
+    $calicoNetworkSets += Get-KubeNetOptionalJsonList -State $State -Context $Context -Arguments @('get', 'globalnetworksets.crd.projectcalico.org', '-o', 'json')
+    $calicoTiers = Get-KubeNetOptionalJsonList -State $State -Context $Context -Arguments @('get', 'tiers.crd.projectcalico.org', '-o', 'json')
     if ($calicoPolicies.Count -gt 0 -or $CniProviderGuess -match 'Calico') {
-        $calico = Test-KubeNetCalicoPolicyPath -Policies $calicoPolicies -SourcePod $SourcePod -SourceNamespace $SourceNamespace -TargetPods $TargetPods -TargetNamespace $TargetNamespace -Service $Service -Ports $ports
+        $calico = Test-KubeNetCalicoPolicyPath -Policies $calicoPolicies -NetworkSets $calicoNetworkSets -Tiers $calicoTiers -SourcePod $SourcePod -SourceNamespace $SourceNamespace -TargetPods $TargetPods -TargetNamespace $TargetNamespace -Service $Service -ServicePortObject $ServicePortObject -ContainerPorts $ContainerPorts
         $results += @($calico.Results)
         $diagnoses += @($calico.Diagnoses)
     }
@@ -91,5 +97,16 @@ function Test-KubeNetCniSpecificPolicyPath {
         $results += [PSCustomObject]@{ Check = 'CNI-specific policies'; Status = 'INFO'; Message = 'No Cilium or Calico policy CRDs were detected/readable for CNI-specific deny analysis.' }
     }
 
-    [PSCustomObject]@{ Results = $results; Diagnoses = $diagnoses }
+    $summary = 'No CNI-specific policy decision was inferred.'
+    $fail = @($results | Where-Object { $_.Status -eq 'FAIL' } | Select-Object -First 1)
+    $pass = @($results | Where-Object { $_.Status -eq 'PASS' -and $_.Check -match 'first matching|explicit deny|policy path' } | Select-Object -First 1)
+    if ($fail.Count -gt 0) {
+        $summary = "CNI-specific policy result: blocked or likely blocked. $($fail[0].Message)"
+    } elseif ($pass.Count -gt 0) {
+        $summary = "CNI-specific policy result: no CNI block inferred. $($pass[0].Message)"
+    } elseif ($results.Count -gt 0) {
+        $summary = "CNI-specific policy result: informational only. $($results[0].Message)"
+    }
+
+    [PSCustomObject]@{ Results = $results; Diagnoses = $diagnoses; Summary = $summary }
 }

@@ -91,9 +91,9 @@ function Get-KubeNetFinalDiagnoses {
 
     $runtimeFailures = @($Results | Where-Object {
         $_.Status -eq 'FAIL' -and $_.Layer -in @(
-            'DNS And Service Routing Layer',
+            'Target debug pod path',
             'Pod-to-Pod Connectivity Layer',
-            'Cross-Namespace Layer',
+            'Source pod path',
             'NodePort And Host Layer',
             'Egress Layer',
             'Ingress Reachability Layer',
@@ -117,7 +117,7 @@ function Get-KubeNetFinalDiagnoses {
     $hasTargetPortRoot = @($items | Where-Object { $_ -match 'Service targetPort .*does not match|service targetPort and pod port naming' }).Count -gt 0
     $hasPrimaryTargetPortRoot = @($items | Where-Object { $_ -match '^Primary issue: .*targetPort' }).Count -gt 0
     $hasNamedTargetPortRoot = @($items | Where-Object { $_ -match "uses named targetPort" }).Count -gt 0
-    $hasExplicitCniDenyRoot = @($items | Where-Object { $_ -match 'explicit (Deny|deny) policy appears to block' }).Count -gt 0
+    $hasExplicitCniDenyRoot = @($items | Where-Object { $_ -match 'explicit (Deny|deny) policy appears to block|Calico policy denies|Calico first matching action is Deny' }).Count -gt 0
     $hasCniDefaultDenyRoot = @($items | Where-Object { $_ -match 'Cilium .*default-deny|Calico .*default-deny|CNI .*default-deny' }).Count -gt 0
     $hasSpecificPathPolicyRoot = @($items | Where-Object { $_ -match 'source egress NetworkPolicy may block traffic|target ingress NetworkPolicy may block traffic' }).Count -gt 0
     $hasMissingEndpointsRoot = @($items | Where-Object { $_ -match 'no ready endpoints|service has no ready endpoints' }).Count -gt 0
@@ -140,10 +140,13 @@ function Get-KubeNetFinalDiagnoses {
         if ($hasDnsPolicyRoot -and $item -match 'may not enforce them') { continue }
         if ($hasExplicitCniDenyRoot -and $item -match 'Direct pod IP connectivity failed') { continue }
         if ($hasExplicitCniDenyRoot -and $item -match 'cannot resolve target service FQDN') { continue }
+        if ($hasExplicitCniDenyRoot -and $item -match "cannot reach optional egress target") { continue }
         if ($hasExplicitCniDenyRoot -and $item -match 'Source-to-target service connection failed') { continue }
+        if ($hasExplicitCniDenyRoot -and $item -match 'Source-to-target connection failed') { continue }
         if ($hasExplicitCniDenyRoot -and $item -match 'Egress test to') { continue }
         if ($hasCniDefaultDenyRoot -and $item -match 'Direct pod IP connectivity failed') { continue }
         if ($hasCniDefaultDenyRoot -and $item -match 'cannot resolve target service FQDN') { continue }
+        if ($hasCniDefaultDenyRoot -and $item -match "cannot reach optional egress target") { continue }
         if ($hasCniDefaultDenyRoot -and $item -match 'Source-to-target service connection failed') { continue }
         if ($hasCniDefaultDenyRoot -and $item -match 'Egress test to') { continue }
         if ($hasTargetPortRoot -and $item -match 'NetworkPolicy may block traffic') { continue }
@@ -360,7 +363,7 @@ function Ensure-KubeNetDebugPod {
         return $false
     }
 
-    Add-KubeNetResult -State $State -Layer $Layer -Check 'debug pod ready' -Status 'PASS' -Message "Temporary debug pod '$Name' is Ready in namespace '$Namespace'."
+    Add-KubeNetResult -State $State -Layer $Layer -Check 'debug pod ready' -Status 'PASS' -Message "Debug pod '$Name' is Ready in namespace '$Namespace'."
     $true
 }
 

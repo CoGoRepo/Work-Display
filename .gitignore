@@ -2,6 +2,8 @@
 *.log
 node_modules/
 reports/
+!KubeNetMods/examples/reports/
+!KubeNetMods/examples/reports/**
 *.tmp
 *.bak
 .DS_Store

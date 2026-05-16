@@ -123,13 +123,13 @@ function Get-KubeNetAlertText {
 function Get-KubeNetAlertSymptom {
     param([string]$Text)
 
-    if ($Text -match 'dns|coredns|nxdomain|lookup|resolver|nameserver|udp\s*53|tcp\s*53') { return 'dns' }
-    if ($Text -match 'networkpolicy|network policy|egress.*(deny|drop|block|timeout)|ingress.*(deny|drop|block)|denied|blocked|dropped') { return 'network-policy' }
+    if ($Text -match 'networkpolicy|network policy|egress.*(deny|drop|block)|ingress.*(deny|drop|block)|denied|blocked|dropped') { return 'network-policy' }
     if ($Text -match 'endpoint|endpointslice|no ready endpoint|no endpoints') { return 'endpoints' }
     if ($Text -match 'ingress|ingressclass|route|host rule|tls|backend.*port') { return 'ingress' }
     if ($Text -match 'loadbalancer|load balancer|elb|alb|nlb|external ip|external traffic') { return 'loadbalancer' }
     if ($Text -match 'nodeport|node port|kube-proxy|service routing') { return 'nodeport' }
     if ($Text -match 'egress|nat|proxy|firewall|external.*timeout|internet') { return 'egress' }
+    if ($Text -match 'dns|coredns|nxdomain|lookup|resolver|nameserver|udp\s*53|tcp\s*53') { return 'dns' }
     if ($Text -match 'cross.namespace|namespace.*to.*namespace|service\.svc|svc\.cluster\.local') { return 'cross-namespace' }
     if ($Text -match 'connection refused|connection timeout|connect timeout|i/o timeout|no route to host|pod.to.service|pod.to.pod|clusterip|service unavailable') { return 'connectivity' }
     if ($Text -match '401|403|unauthorized|forbidden|login|permission denied') { return 'application-auth' }
@@ -343,7 +343,10 @@ function ConvertTo-KubeNetParameterPlan {
     if ($Alert.Symptom -eq 'ingress' -and $reachabilityUrls.Count -gt 0) {
         $params.TestIngress = $true
         $params.IngressUrls = @($reachabilityUrls)
-    } elseif ($Alert.Symptom -in @('egress', 'loadbalancer') -and $reachabilityUrls.Count -gt 0) {
+    } elseif ($Alert.Symptom -eq 'egress' -and $reachabilityUrls.Count -gt 0) {
+        $params.TestEgress = $true
+        $params.EgressUrls = @($reachabilityUrls)
+    } elseif ($Alert.Symptom -eq 'loadbalancer' -and $reachabilityUrls.Count -gt 0) {
         $params.ExternalUrls = @($reachabilityUrls)
     }
 
